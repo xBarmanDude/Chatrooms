@@ -20,7 +20,11 @@
 
 <script>
 const socket = io();
-let username = prompt("Enter your name:");
+let username = "";
+
+fetch("/session")
+    .then(r => r.json())
+    .then(data => { username = data.username; });
 let currentRoom = "general";
 
 socket.emit("joinRoom", currentRoom);
