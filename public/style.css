@@ -322,29 +322,25 @@ body {
 }
 /* ── MESSAGE ACTIONS ── */
 
-.messageWrapper {
-    position: relative;
-}
-
 .msgActions {
     display: none;
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
     gap: 4px;
     align-items: center;
-}
-
-.meWrapper .msgActions {
-    right: calc(55% + 8px);
-}
-
-.messageWrapper:not(.meWrapper) .msgActions {
-    left: calc(55% + 8px);
+    flex-shrink: 0;
 }
 
 .messageWrapper:hover .msgActions {
     display: flex;
+}
+
+.meWrapper {
+    flex-direction: row-reverse;
+    align-items: center;
+}
+
+.messageWrapper:not(.meWrapper) {
+    flex-direction: row;
+    align-items: center;
 }
 
 .deleteBtn, .copyBtn {
@@ -367,4 +363,8 @@ body {
 .copyBtn:hover {
     background: rgba(255,255,255,0.12);
     color: white;
+}
+.bubbleCol {
+    display: flex;
+    flex-direction: column;
 }
