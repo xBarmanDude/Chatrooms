@@ -5,7 +5,6 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 <div id="appContainer">
     <div id="sidebar">
         <div id="sidebarHeader">💬 Chat Rooms</div>
@@ -14,7 +13,6 @@
         <div id="userList"></div>
         <div id="logoutBtn" onclick="window.location.href='/logout'">🚪 Logout</div>
     </div>
-
     <div id="main">
         <div id="chatHeader">🌐 General</div>
         <div id="chat"></div>
@@ -24,7 +22,6 @@
         </div>
     </div>
 </div>
-
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
@@ -51,7 +48,7 @@ function loadUsers() {
                 const div = document.createElement("div");
                 div.classList.add("sidebarItem");
                 div.innerText = "👤 " + u.username;
-                div.onclick = () => openDM(u.username);
+                div.onclick = () => openDM(u.username, div);
                 list.appendChild(div);
             });
         });
@@ -68,20 +65,21 @@ function switchToGeneral() {
     socket.emit("joinRoom", currentRoom);
 }
 
-function openDM(target) {
+function openDM(target, el) {
     isDM = true;
     dmTarget = target;
     document.getElementById("chat").innerHTML = "";
     document.getElementById("chatHeader").innerText = "💌 " + target;
     document.querySelectorAll(".sidebarItem").forEach(i => i.classList.remove("active"));
-    event.target.classList.add("active");
+    el.classList.add("active");
     socket.emit("joinDM", { from: username, to: target });
 }
 
 socket.on("loadMessages", (messages) => {
     document.getElementById("chat").innerHTML = "";
     messages.forEach((data) => {
-        renderMessage(data.name, data.msg, data.name === username);
+        const t = new Date(data.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        renderMessage(data.name, data.msg, data.name === username, t);
     });
 });
 
@@ -91,8 +89,8 @@ socket.on("message", (data) => {
     }
 });
 
-function renderMessage(name, msg, isMe) {
-    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function renderMessage(name, msg, isMe, time) {
+    time = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const div = document.createElement("div");
     if (isMe) {
         div.classList.add("messageWrapper", "meWrapper");
@@ -117,6 +115,5 @@ function sendMessage() {
     input.value = "";
 }
 </script>
-
 </body>
 </html>

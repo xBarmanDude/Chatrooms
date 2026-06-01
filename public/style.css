@@ -70,9 +70,7 @@ body {
     transition: 0.2s;
 }
 
-#logoutBtn:hover {
-    color: red;
-}
+#logoutBtn:hover { color: red; }
 
 /* ── MAIN CHAT AREA ── */
 
@@ -98,15 +96,9 @@ body {
 #chat {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 40px;
+    padding: 20px 40px;
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.2) transparent;
-}
-
-#chat > * {
-    max-width: 700px;
-    width: 100%;
-    margin: 0 auto;
 }
 
 #chat::-webkit-scrollbar { width: 8px; }
@@ -189,13 +181,8 @@ body {
     margin-bottom: 6px;
 }
 
-.messageWrapper.meWrapper {
-    align-items: flex-end;
-}
-
-.messageWrapper:not(.meWrapper) {
-    align-items: flex-start;
-}
+.messageWrapper.meWrapper { align-items: flex-end; }
+.messageWrapper:not(.meWrapper) { align-items: flex-start; }
 
 /* ── MESSAGE BUBBLES ── */
 
@@ -223,16 +210,12 @@ body {
     box-shadow: 0 0 15px rgba(0,200,83,0.6);
 }
 
-/* OTHER USER BUBBLE */
-
 .msg:not(.me) {
     background: rgba(255,255,255,0.07);
     border: 1px solid rgba(255,255,255,0.05);
     backdrop-filter: blur(10px);
     border-radius: 18px 18px 18px 6px;
 }
-
-/* YOUR BUBBLE */
 
 .msg.me {
     color: white;
@@ -263,6 +246,7 @@ body {
     line-height: 1.4;
     word-break: break-word;
 }
+
 .sender, .mySender {
     font-size: 11px;
     font-weight: 600;
