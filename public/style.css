@@ -325,31 +325,26 @@ body {
 .msgActions {
     display: none;
     gap: 4px;
-    margin-bottom: 3px;
+    margin-top: 6px;
+    justify-content: flex-end;
 }
 
-.messageWrapper:hover .msgActions {
+.msg:hover .msgActions {
     display: flex;
 }
 
 .deleteBtn, .copyBtn {
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: none;
+    border: none;
     cursor: pointer;
-    font-size: 12px;
-    padding: 3px 8px;
-    border-radius: 8px;
-    color: rgba(255,255,255,0.5);
+    font-size: 13px;
+    padding: 2px 4px;
+    border-radius: 6px;
+    opacity: 0.6;
     transition: 0.2s;
 }
 
-.deleteBtn:hover {
-    background: rgba(255,50,50,0.15);
-    color: rgba(255,100,100,0.9);
-    border-color: rgba(255,50,50,0.2);
-}
-
-.copyBtn:hover {
-    background: rgba(255,255,255,0.12);
-    color: white;
+.deleteBtn:hover, .copyBtn:hover {
+    opacity: 1;
+    background: rgba(255,255,255,0.1);
 }
