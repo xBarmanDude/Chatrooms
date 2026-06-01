@@ -4,7 +4,6 @@ const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const session = require("express-session");
-const MongoStore = require("connect-mongo/session");
 
 const app = express();
 const server = http.createServer(app);
@@ -33,11 +32,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(session({
     secret: "chatapp_secret",
     resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-    mongoUrl: "mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0",
-    mongoOptions: { useNewUrlParser: true, useUnifiedTopology: true }
-})
+    saveUninitialized: false
 }));
 
 // Routes
