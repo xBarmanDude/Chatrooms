@@ -98,12 +98,9 @@ body {
 #chat {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 0;
+    padding: 10px 40px;
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.2) transparent;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
 }
 
 #chat > * {
