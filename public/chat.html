@@ -30,7 +30,7 @@ let currentRoom = "general";
 socket.emit("joinRoom", currentRoom);
 socket.on("loadMessages", (messages) => {
     messages.forEach((data) => {
-        renderMessage(data.name, data.msg, false);
+        renderMessage(data.name, data.msg, data.name === username);
     });
 });
 
