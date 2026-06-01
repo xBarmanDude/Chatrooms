@@ -320,3 +320,31 @@ body {
     transform: scale(1.03);
     box-shadow: 0 0 12px rgba(0,200,83,0.5);
 }
+/* ── MESSAGE ACTIONS ── */
+
+.msgActions {
+    display: none;
+    gap: 4px;
+    margin-top: 6px;
+    justify-content: flex-end;
+}
+
+.msg:hover .msgActions {
+    display: flex;
+}
+
+.deleteBtn, .copyBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 4px;
+    border-radius: 6px;
+    opacity: 0.6;
+    transition: 0.2s;
+}
+
+.deleteBtn:hover, .copyBtn:hover {
+    opacity: 1;
+    background: rgba(255,255,255,0.1);
+}

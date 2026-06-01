@@ -79,7 +79,7 @@ socket.on("loadMessages", (messages) => {
     document.getElementById("chat").innerHTML = "";
     messages.forEach((data) => {
         const t = new Date(data.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        renderMessage(data.name, data.msg, data.name === username, t);
+        renderMessage(data.name, data.msg, data.name === username, t, data._id);
     });
 });
 
@@ -89,19 +89,40 @@ socket.on("message", (data) => {
     }
 });
 
-function renderMessage(name, msg, isMe, time) {
+function renderMessage(name, msg, isMe, time, id) {
     time = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const div = document.createElement("div");
+    div.setAttribute("data-id", id || "");
+    
+    const deleteBtn = isMe ? `<button class="deleteBtn" onclick="deleteMessage('${id}', this)">🗑️</button>` : "";
+    const copyBtn = `<button class="copyBtn" onclick="copyMessage(this)">📋</button>`;
+
     if (isMe) {
         div.classList.add("messageWrapper", "meWrapper");
-        div.innerHTML = `<div class="mySender">You</div><div class="msg me"><div class="text">${msg}</div></div><div class="myTime">${time}</div>`;
+        div.innerHTML = `<div class="mySender">You</div><div class="msg me"><div class="text">${msg}</div><div class="msgActions">${copyBtn}${deleteBtn}</div></div><div class="myTime">${time}</div>`;
     } else {
         div.classList.add("messageWrapper");
-        div.innerHTML = `<div class="sender">${name}</div><div class="msg"><div class="text">${msg}</div></div><div class="time">${time}</div>`;
+        div.innerHTML = `<div class="sender">${name}</div><div class="msg"><div class="text">${msg}</div><div class="msgActions">${copyBtn}</div></div><div class="time">${time}</div>`;
     }
     document.getElementById("chat").appendChild(div);
     document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
 }
+
+function deleteMessage(id, btn) {
+    const wrapper = btn.closest(".messageWrapper");
+    wrapper.remove();
+    socket.emit("deleteMessage", { id });
+}
+
+function copyMessage(btn) {
+    const text = btn.closest(".msg").querySelector(".text").innerText;
+    navigator.clipboard.writeText(text);
+}
+
+socket.on("messageDeleted", (data) => {
+    const el = document.querySelector(`[data-id="${data.id}"]`);
+    if (el) el.remove();
+});
 
 function sendMessage() {
     const input = document.getElementById("msg");

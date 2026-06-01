@@ -120,6 +120,12 @@ socket.on("dm", async (data) => {
             senderId: socket.id
         });
     });
+    
+    socket.on("deleteMessage", async (data) => {
+    if (!data || !data.id) return;
+    await Message.findByIdAndDelete(data.id);
+    io.emit("messageDeleted", { id: data.id });
+});
 
     socket.on("disconnect", () => {
         console.log("User disconnected:", socket.id);
