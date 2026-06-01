@@ -85,9 +85,9 @@ app.use(express.static("public"));
 io.on("connection", async (socket) => {
     console.log("User connected:", socket.id);
 
-    socket.on("joinRoom", async (room) => {
+socket.on("joinRoom", async (room) => {
     socket.join(room);
-    const messages = await Message.find({ room, isDM: { $ne: true } }).sort({ time: 1 }).limit(50);
+    const messages = await Message.find({ room, isDM: false }).sort({ time: 1 }).limit(50);
     socket.emit("loadMessages", messages);
 });
 
@@ -110,9 +110,9 @@ socket.on("dm", async (data) => {
     });
 });
 
-    socket.on("message", async (data) => {
-        if (!data || !data.room || !data.msg || !data.name) return;
-        await Message.create({ name: data.name, msg: data.msg, room: data.room });
+   socket.on("message", async (data) => {
+    if (!data || !data.room || !data.msg || !data.name) return;
+    await Message.create({ name: data.name, msg: data.msg, room: data.room, isDM: false });
         io.to(data.room).emit("message", {
             name: data.name,
             msg: data.msg,
