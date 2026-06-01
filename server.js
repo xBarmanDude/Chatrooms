@@ -4,6 +4,7 @@ const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const session = require("express-session");
+const MongoStore = require("connect-mongo");
 
 const app = express();
 const server = http.createServer(app);
@@ -16,6 +17,8 @@ const Message = mongoose.model("Message", new mongoose.Schema({
     name: String,
     msg: String,
     room: String,
+    to: String,
+    isDM: { type: Boolean, default: false },
     time: { type: Date, default: Date.now }
 }));
 
@@ -30,7 +33,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(session({
     secret: "chatapp_secret",
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: "mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0"
+    })
 }));
 
 // Routes
@@ -71,6 +77,12 @@ app.get("/session", (req, res) => {
     res.json({ username: req.session.username || "Anonymous" });
 });
 
+app.get("/users", async (req, res) => {
+    if (!req.session.username) return res.json({ error: "Not logged in" });
+    const users = await User.find({}, "username").lean();
+    res.json(users.filter(u => u.username !== req.session.username));
+});
+
 app.use(express.static("public"));
 
 // Socket
@@ -78,10 +90,29 @@ io.on("connection", async (socket) => {
     console.log("User connected:", socket.id);
 
     socket.on("joinRoom", async (room) => {
-        socket.join(room);
-        const messages = await Message.find({ room }).sort({ time: 1 }).limit(50);
-        socket.emit("loadMessages", messages);
+    socket.join(room);
+    const messages = await Message.find({ room }).sort({ time: 1 }).limit(50);
+    socket.emit("loadMessages", messages);
+});
+
+socket.on("joinDM", async (data) => {
+    const dmRoom = [data.from, data.to].sort().join("_");
+    socket.join(dmRoom);
+    const messages = await Message.find({ room: dmRoom, isDM: true }).sort({ time: 1 }).limit(50);
+    socket.emit("loadMessages", messages);
+});
+
+socket.on("dm", async (data) => {
+    if (!data || !data.from || !data.to || !data.msg) return;
+    const dmRoom = [data.from, data.to].sort().join("_");
+    await Message.create({ name: data.from, msg: data.msg, room: dmRoom, to: data.to, isDM: true });
+    io.to(dmRoom).emit("message", {
+        name: data.from,
+        msg: data.msg,
+        room: dmRoom,
+        senderId: socket.id
     });
+});
 
     socket.on("message", async (data) => {
         if (!data || !data.room || !data.msg || !data.name) return;
