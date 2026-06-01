@@ -4,47 +4,96 @@
     <title>Chat Rooms</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<h2>💬 Chat Rooms</h2>
+<div id="appContainer">
+    <div id="sidebar">
+        <div id="sidebarHeader">💬 Chat Rooms</div>
+        <div class="sidebarItem active" onclick="switchToGeneral()">🌐 General</div>
+        <div id="sidebarHeader2">💌 Direct Messages</div>
+        <div id="userList"></div>
+        <div id="logoutBtn" onclick="window.location.href='/logout'">🚪 Logout</div>
+    </div>
 
-<div id="chat"></div>
-
-<div id="inputBox">
-    <input id="msg" placeholder="Type message...">
-    <button class="sendBtn" onclick="sendMessage()">➤</button>
+    <div id="main">
+        <div id="chatHeader">🌐 General</div>
+        <div id="chat"></div>
+        <div id="inputBox">
+            <input id="msg" placeholder="Type message..." onkeydown="if(event.key==='Enter') sendMessage()">
+            <button class="sendBtn" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-
 <script>
 const socket = io();
 let username = "";
+let currentRoom = "general";
+let isDM = false;
+let dmTarget = "";
 
 fetch("/session")
     .then(r => r.json())
-    .then(data => { username = data.username; });
-let currentRoom = "general";
+    .then(data => {
+        username = data.username;
+        socket.emit("joinRoom", currentRoom);
+        loadUsers();
+    });
 
-socket.emit("joinRoom", currentRoom);
+function loadUsers() {
+    fetch("/users")
+        .then(r => r.json())
+        .then(users => {
+            const list = document.getElementById("userList");
+            list.innerHTML = "";
+            users.forEach(u => {
+                const div = document.createElement("div");
+                div.classList.add("sidebarItem");
+                div.innerText = "👤 " + u.username;
+                div.onclick = () => openDM(u.username);
+                list.appendChild(div);
+            });
+        });
+}
+
+function switchToGeneral() {
+    isDM = false;
+    dmTarget = "";
+    currentRoom = "general";
+    document.getElementById("chat").innerHTML = "";
+    document.getElementById("chatHeader").innerText = "🌐 General";
+    document.querySelectorAll(".sidebarItem").forEach(i => i.classList.remove("active"));
+    document.querySelector(".sidebarItem").classList.add("active");
+    socket.emit("joinRoom", currentRoom);
+}
+
+function openDM(target) {
+    isDM = true;
+    dmTarget = target;
+    document.getElementById("chat").innerHTML = "";
+    document.getElementById("chatHeader").innerText = "💌 " + target;
+    document.querySelectorAll(".sidebarItem").forEach(i => i.classList.remove("active"));
+    event.target.classList.add("active");
+    socket.emit("joinDM", { from: username, to: target });
+}
+
 socket.on("loadMessages", (messages) => {
+    document.getElementById("chat").innerHTML = "";
     messages.forEach((data) => {
         renderMessage(data.name, data.msg, data.name === username);
     });
 });
 
-function joinRoom() {
-    const room = document.getElementById("roomSelect").value;
-    currentRoom = room;
-    socket.emit("joinRoom", room);
-    document.getElementById("chat").innerHTML = "";
-}
+socket.on("message", (data) => {
+    if (data.senderId !== socket.id) {
+        renderMessage(data.name, data.msg, false);
+    }
+});
 
 function renderMessage(name, msg, isMe) {
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const div = document.createElement("div");
-
     if (isMe) {
         div.classList.add("messageWrapper", "meWrapper");
         div.innerHTML = `<div class="mySender">You</div><div class="msg me"><div class="text">${msg}</div></div><div class="myTime">${time}</div>`;
@@ -52,31 +101,19 @@ function renderMessage(name, msg, isMe) {
         div.classList.add("messageWrapper");
         div.innerHTML = `<div class="sender">${name}</div><div class="msg"><div class="text">${msg}</div></div><div class="time">${time}</div>`;
     }
-
     document.getElementById("chat").appendChild(div);
     document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
 }
 
-socket.on("message", (data) => {
-    // Only render OTHER people's messages here
-    if (data.senderId !== socket.id) {
-        renderMessage(data.name, data.msg, false);
-    }
-});
-
 function sendMessage() {
     const input = document.getElementById("msg");
     if (!input.value.trim()) return;
-
-    // Render YOUR message instantly locally
     renderMessage(username, input.value, true);
-
-    socket.emit("message", {
-        name: username,
-        msg: input.value,
-        room: currentRoom
-    });
-
+    if (isDM) {
+        socket.emit("dm", { from: username, to: dmTarget, msg: input.value });
+    } else {
+        socket.emit("message", { name: username, msg: input.value, room: currentRoom });
+    }
     input.value = "";
 }
 </script>
