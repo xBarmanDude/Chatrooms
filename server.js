@@ -87,7 +87,7 @@ io.on("connection", async (socket) => {
 
     socket.on("joinRoom", async (room) => {
     socket.join(room);
-    const messages = await Message.find({ room }).sort({ time: 1 }).limit(50);
+    const messages = await Message.find({ room, isDM: { $ne: true } }).sort({ time: 1 }).limit(50);
     socket.emit("loadMessages", messages);
 });
 
