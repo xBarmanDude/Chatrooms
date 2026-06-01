@@ -24,6 +24,11 @@ let username = prompt("Enter your name:");
 let currentRoom = "general";
 
 socket.emit("joinRoom", currentRoom);
+socket.on("loadMessages", (messages) => {
+    messages.forEach((data) => {
+        renderMessage(data.name, data.msg, false);
+    });
+});
 
 function joinRoom() {
     const room = document.getElementById("roomSelect").value;
