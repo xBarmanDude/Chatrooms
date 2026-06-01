@@ -95,6 +95,11 @@ body {
     transition: 0.2s ease;
     box-shadow: 0 0 10px rgba(76,175,80,0.3);
 }
+.msg.me:hover {
+    transform: scale(1.01);
+    transition: 0.2s ease;
+    box-shadow: 0 0 15px rgba(0,200,83,0.6);
+}
 
 /* OTHER USER BUBBLE */
 
