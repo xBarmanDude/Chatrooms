@@ -11,6 +11,7 @@ const MongoStore = require("connect-mongo");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const userSocketMap = new Map();
 
 mongoose.connect("mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0");
 
@@ -111,8 +112,10 @@ const onlineUsers = new Map();
 io.on("connection", (socket) => {
 
     socket.on("userOnline", (username) => {
-        onlineUsers.set(socket.id, username);
-        io.emit("onlineUsers", Array.from(onlineUsers.values()));
+        userSocketMap.set(username, socket.id);
+onlineUsers.set(socket.id, username);
+
+io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("joinRoom", async (room) => {
@@ -156,14 +159,7 @@ io.on("connection", (socket) => {
 
     // ── CALL SIGNALING (all routed by socket ID) ──
     socket.on("call-user", ({ to, from, offer }) => {
-    let targetId = null;
-
-    for (let [id, name] of onlineUsers.entries()) {
-        if (name === to) {
-            targetId = id;
-            break;
-        }
-    }
+    const targetId = userSocketMap.get(to);
 
     if (!targetId) {
         console.log("CALL FAILED: user not found ->", to);
@@ -190,11 +186,16 @@ io.on("connection", (socket) => {
     });
 
     socket.on("disconnect", async () => {
-        const username = onlineUsers.get(socket.id);
-        if (username) await User.updateOne({ username }, { lastSeen: new Date() });
-        onlineUsers.delete(socket.id);
-        io.emit("onlineUsers", Array.from(onlineUsers.values()));
-    });
+    const username = onlineUsers.get(socket.id);
+
+    if (username) {
+        userSocketMap.delete(username);
+        await User.updateOne({ username }, { lastSeen: new Date() });
+    }
+
+    onlineUsers.delete(socket.id);
+
+    io.emit("onlineUsers", Array.from(userSocketMap.keys()));
 });
 
 server.listen(process.env.PORT || 3000, () => {

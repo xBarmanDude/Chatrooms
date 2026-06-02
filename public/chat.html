@@ -329,8 +329,19 @@ socket.on("call-accepted", async ({ answer }) => {
 });
 
 socket.on("ice-candidate", async ({ candidate }) => {
-    try { if (peer && candidate) await peer.addIceCandidate(new RTCIceCandidate(candidate)); }
-    catch (e) { console.log("ICE error:", e); }
+    try {
+        if (!peer || !candidate) return;
+
+        // ❗ FIX: wait until remote description exists
+        if (!peer.remoteDescription) {
+            console.log("ICE queued (no remoteDescription yet)");
+            return;
+        }
+
+        await peer.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (e) {
+        console.log("ICE error:", e);
+    }
 });
 
 socket.on("call-ended", () => cleanupCall());
