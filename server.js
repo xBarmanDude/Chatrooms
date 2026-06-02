@@ -140,38 +140,27 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
 
     socket.on("dm", async (data) => {
 
-        console.log("DM DEBUG:", {
-        socketId: socket.id,
-        from: onlineUsers.get(socket.id),
-        to: data.to,
-        msg: data.msg
-    });
+    const from = (data.from || "").trim().toLowerCase();
+    const to = (data.to || "").trim().toLowerCase();
+    const msg = data.msg;
 
-    const from = onlineUsers.get(socket.id); // ALWAYS server truth
+    if (!from || !to || !msg) return;
 
-    if (!from || !data?.to || !data?.msg) return;
+    const dmRoom = [from, to].sort().join("_");
 
-    const dmRoom = [from, data.to].sort().join("_");
+    console.log("DM ROOM:", dmRoom);
 
     await Message.create({
         name: from,
-        msg: data.msg,
+        msg,
         room: dmRoom,
-        to: data.to,
+        to,
         isDM: true
     });
 
     io.to(dmRoom).emit("message", {
         name: from,
-        msg: data.msg,
-        room: dmRoom,
-        senderId: socket.id,
-        isDM: true
-    });
-
-    io.to(dmRoom).emit("message", {
-        name: from,
-        msg: data.msg,
+        msg,
         room: dmRoom,
         senderId: socket.id,
         isDM: true
