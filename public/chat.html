@@ -391,7 +391,12 @@ async function acceptCall() {
 
     await openCamera();
 
-    createPeer();
+if (!window.localStream) {
+    console.log("No stream, stopping call setup");
+    return;
+}
+
+createPeer();
 
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
@@ -413,24 +418,27 @@ function rejectCall() {
 
 async function openCamera() {
     try {
+        const video = document.getElementById("localVideo");
+
+        if (!video) {
+            console.log("localVideo not found in DOM");
+            return;
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: true
         });
 
-        const video = document.getElementById("localVideo");
-video.srcObject = stream;
-
-window.localStream = stream;
-
-document.getElementById("callUI").style.display = "block";
-
+        video.srcObject = stream;
         window.localStream = stream;
+
+        document.getElementById("callUI").style.display = "block";
 
         console.log("Camera opened");
     } catch (err) {
         console.log("Camera error:", err);
-        alert("Camera access denied or not available");
+        alert("Camera failed (check permissions or HTTPS)");
     }
 }
 
@@ -471,7 +479,12 @@ function createPeer() {
     });
 
     // send local tracks
-    window.localStream.getTracks().forEach(track => {
+    if (!window.localStream) {
+    console.log("No localStream yet");
+    return;
+}
+
+window.localStream.getTracks().forEach(track => {
         peer.addTrack(track, window.localStream);
     });
 
