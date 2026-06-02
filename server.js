@@ -195,14 +195,14 @@ socket.on("dm", async (data) => {
     io.emit("messageDeleted", { id: data.id });
 });
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async () => {
     const username = onlineUsers.get(socket.id);
 
     if (username) {
         await User.updateOne(
-  { username },
-  { lastSeen: new Date() }
-);
+            { username },
+            { lastSeen: new Date() }
+        );
     }
 
     onlineUsers.delete(socket.id);
