@@ -32,6 +32,7 @@ let dmTarget = "";
 let lastDateLabel = "";
 let unreadCounts = {};
 let onlineUsers = [];
+let lastSeenData = {};
 
 fetch("/session")
     .then(r => r.json())
@@ -56,10 +57,28 @@ function loadUsers() {
                 div.id = "dm-" + u.username;
                 const isOnline = onlineUsers.includes(u.username);
 
+let statusText = "Online";
+
+if (!isOnline && lastSeenData[u.username]) {
+    const mins = Math.floor((Date.now() - lastSeenData[u.username]) / 60000);
+
+    if (mins < 1) {
+        statusText = "Last seen just now";
+    } else if (mins === 1) {
+        statusText = "Last seen 1 minute ago";
+    } else {
+        statusText = `Last seen ${mins} minutes ago`;
+    }
+}
+
 div.innerHTML = `
-<span>
-    ${isOnline ? "🟢" : "⚫"} ${u.username}
-</span>
+<div>
+    <div>${isOnline ? "🟢" : "⚫"} ${u.username}</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.45)">
+        ${statusText}
+    </div>
+</div>
+
 <span class="unreadBadge" id="badge-${u.username}" style="display:none">0</span>
 `;
                 div.onclick = () => openDM(u.username, div);
@@ -70,6 +89,9 @@ div.innerHTML = `
 
 socket.on("onlineUsers", (users) => {
     onlineUsers = users;
+
+    socket.emit("getLastSeen");
+
     loadUsers();
 });
 
@@ -128,6 +150,11 @@ socket.on("loadMessages", (messages) => {
         insertDateDivider(dateLabel);
         renderMessage(data.name, data.msg, data.name === username, t, data._id);
     });
+});
+
+socket.on("lastSeenData", (data) => {
+    lastSeenData = data;
+    loadUsers();
 });
 
 socket.on("message", (data) => {

@@ -82,6 +82,7 @@ app.get("/users", async (req, res) => {
 app.use(express.static("public"));
 
 const onlineUsers = new Map();
+const lastSeen = new Map();
 
 // Socket
 io.on("connection", async (socket) => {
@@ -96,6 +97,10 @@ socket.on("joinRoom", async (room) => {
     socket.join(room);
     const messages = await Message.find({ room, isDM: false }).sort({ time: 1 }).limit(50);
     socket.emit("loadMessages", messages);
+});
+
+socket.on("getLastSeen", () => {
+    socket.emit("lastSeenData", Object.fromEntries(lastSeen));
 });
 
 socket.on("joinDM", async (data) => {
@@ -135,6 +140,12 @@ socket.on("dm", async (data) => {
 });
 
     socket.on("disconnect", () => {
+    const username = onlineUsers.get(socket.id);
+
+    if (username) {
+        lastSeen.set(username, Date.now());
+    }
+
     onlineUsers.delete(socket.id);
 
     io.emit("onlineUsers", Array.from(onlineUsers.values()));
