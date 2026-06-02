@@ -318,7 +318,7 @@ function startCall() {
         return;
     }
 
-    alert("Calling " + dmTarget + " (next step we connect video)");
+    alert("Calling " + dmTarget );
     
     socket.emit("call-user", {
         to: dmTarget,

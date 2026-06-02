@@ -239,8 +239,16 @@ socket.on("reject-call", (data) => {
     });
 
     // CALL SYSTEM (SIGNALING)
-socket.on("call-user", ({ to, offer, from }) => {
-    socket.to(to).emit("incoming-call", { offer, from });
+socket.on("call-user", ({ to, from, offer }) => {
+    const targetSocketId = [...onlineUsers.entries()]
+        .find(([id, name]) => name === to)?.[0];
+
+    if (targetSocketId) {
+        io.to(targetSocketId).emit("incoming-call", {
+            from,
+            offer
+        });
+    }
 });
 
 socket.on("call-accepted", ({ to, answer }) => {
