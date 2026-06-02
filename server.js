@@ -35,16 +35,25 @@ const Message = mongoose.model("Message", new mongoose.Schema({
 
 const User = mongoose.model("User", new mongoose.Schema({
     username: { type: String, unique: true },
-    password: String
+    password: String,
+    lastSeen: Date
 }));
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const MongoStore = require("connect-mongo");
+
 app.use(session({
     secret: "chatapp_secret",
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: "mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0"
+    }),
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
+    }
 }));
 
 // Routes
@@ -140,7 +149,12 @@ socket.on("joinRoom", async (room) => {
 });
 
 socket.on("getLastSeen", () => {
-    socket.emit("lastSeenData", Object.fromEntries(lastSeen));
+    const users = await User.find({}, "username lastSeen").lean();
+const map = {};
+users.forEach(u => {
+    if (u.lastSeen) map[u.username] = u.lastSeen;
+});
+socket.emit("lastSeenData", map);
 });
 
 socket.on("joinDM", async (data) => {
@@ -183,7 +197,10 @@ socket.on("dm", async (data) => {
     const username = onlineUsers.get(socket.id);
 
     if (username) {
-        lastSeen.set(username, Date.now());
+        await User.updateOne(
+  { username },
+  { lastSeen: new Date() }
+);
     }
 
     onlineUsers.delete(socket.id);
