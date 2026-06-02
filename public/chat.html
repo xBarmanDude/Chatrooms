@@ -15,18 +15,22 @@
     </div>
     <div id="main">
 
-        <div id="callUI" style="display:none; position:fixed; bottom:20px; right:20px; background:#111; padding:10px; border-radius:12px;">
+        <div id="callUI" style="display:none; position:fixed; bottom:20px; right:20px; background:#111; padding:10px; border-radius:12px; z-index:9999;">
     
     <div style="color:white; font-size:12px; margin-bottom:5px;">
         🔴 In Call
     </div>
 
-    <video id="remoteVideo" autoplay playsinline
-    style="width:200px; border-radius:10px; background:black; margin-top:10px;">
-</video>
-<button onclick="endCall()" style="margin-top:10px; width:100%; padding:5px; border-radius:8px; border:none; background:red; color:white;">
-    End Call
-</button>
+    <video id="remoteVideo"
+        autoplay
+        playsinline
+        style="width:200px; border-radius:10px; background:black; margin-top:10px; display:none;">
+    </video>
+
+    <button onclick="endCall()"
+        style="margin-top:10px; width:100%; padding:5px; border-radius:8px; border:none; background:red; color:white;">
+        End Call
+    </button>
 
 </div>
 
@@ -64,8 +68,6 @@
 </div>
     </div>
 </div>
-<video id="localVideo" autoplay playsinline muted></video>
-<video id="remoteVideo" autoplay playsinline></video>
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
@@ -356,21 +358,27 @@ socket.on("incoming-call", async (data) => {
     window.incomingOffer = data.offer;
 });
 
-socket.on("call-accepted", async () => {
-    createPeer();
+socket.on("call-accepted", async (data) => {
+    if (!peer) createPeer();
 
-    const offer = window.incomingOffer;
+    try {
+        const offer = window.incomingOffer;
 
-    await peer.setRemoteDescription(new RTCSessionDescription(offer));
+        if (!offer) return;
 
-    const answer = await peer.createAnswer();
-    await peer.setLocalDescription(answer);
+        await peer.setRemoteDescription(new RTCSessionDescription(offer));
 
-    socket.emit("call-user", {
-        to: window.currentCaller,
-        from: username,
-        offer: answer
-    });
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+
+        socket.emit("call-accepted", {
+            to: window.currentCaller,
+            answer: answer
+        });
+
+    } catch (err) {
+        console.log("call accept error:", err);
+    }
 });
 
 socket.on("ice-candidate", async ({ candidate }) => {
@@ -492,8 +500,11 @@ window.localStream.getTracks().forEach(track => {
 
     // receive remote stream
     peer.ontrack = (event) => {
-        document.getElementById("remoteVideo").srcObject = event.streams[0];
-    };
+    const video = document.getElementById("remoteVideo");
+
+    video.style.display = "block";
+    video.srcObject = event.streams[0];
+};
 
     // ICE candidates
     peer.onicecandidate = (event) => {
