@@ -74,7 +74,13 @@ function loadUsers() {
 let statusText = "Online";
 
 if (!isOnline && lastSeenData[u.username]) {
-    const mins = Math.floor((Date.now() - lastSeenData[u.username]) / 60000);
+    const last = new Date(lastSeenData[u.username]).getTime();
+const mins = Math.floor((Date.now() - last) / 60000);
+
+    if (!last || isNaN(last)) {
+    statusText = "Last seen recently";
+} else {
+    const mins = Math.floor((Date.now() - last) / 60000);
 
     if (mins < 1) {
         statusText = "Last seen just now";
@@ -83,6 +89,7 @@ if (!isOnline && lastSeenData[u.username]) {
     } else {
         statusText = `Last seen ${mins} minutes ago`;
     }
+}
 }
 
 div.innerHTML = `
