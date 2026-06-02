@@ -95,9 +95,10 @@ app.post("/upload", upload.single("image"), async (req, res) => {
     try {
         const result = await new Promise((resolve, reject) => {
             cloudinary.uploader.upload_stream(
-                {
-                    folder: "chat_uploads"
-                },
+    {
+        folder: "chat_uploads",
+        resource_type: "auto"
+    },
                 (error, result) => {
                     if (error) reject(error);
                     else resolve(result);

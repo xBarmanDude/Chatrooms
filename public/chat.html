@@ -17,7 +17,12 @@
         <div id="chatHeader">🌐 General</div>
         <div id="chat"></div>
         <div id="inputBox">
-    <input type="file" id="imageInput" accept="image/*" style="display:none">
+    <input
+    type="file"
+    id="imageInput"
+    accept="image/*,video/*"
+    style="display:none"
+>
 
     <button class="attachBtn" onclick="document.getElementById('imageInput').click()">
     📎
@@ -236,7 +241,10 @@ function renderMessage(name, msg, isMe, time, id) {
     div.setAttribute("data-id", id || "");
 
     const isImage =
-    msg.startsWith("https://res.cloudinary.com/");
+    msg.match(/\.(jpg|jpeg|png|gif|webp)/i);
+
+const isVideo =
+    msg.match(/\.(mp4|webm|mov)/i);
     const deleteBtn = isMe ? `<button class="deleteBtn" onclick="deleteMessage('${id}', this)">🗑️</button>` : "";
     const copyBtn = `<button class="copyBtn" onclick="copyMessage(this)">📋</button>`;
 
@@ -247,9 +255,17 @@ function renderMessage(name, msg, isMe, time, id) {
                 <div class="msgActions meActions">${copyBtn}${deleteBtn}</div>
                 <div class="bubbleCol">
                     <div class="mySender">You</div>
-                    <div class="msg me">${isImage
-    ? `<img src="${msg}" style="max-width:300px;border-radius:12px;">`
-    : `<div class="text">${msg}</div>`
+                    <div class="msg me">${
+    isImage
+        ? `<img src="${msg}" style="max-width:300px;border-radius:12px;">`
+        : isVideo
+            ? `
+                <video controls style="max-width:300px;border-radius:12px;">
+                    <source src="${msg}">
+                </video>
+              `
+            : `<div class="text">${msg}</div>`
+}
 }</div>
                     <div class="myTime">${time}</div>
                 </div>
@@ -261,9 +277,17 @@ function renderMessage(name, msg, isMe, time, id) {
             <div class="msgRow">
                 <div class="bubbleCol">
                     <div class="sender">${name}</div>
-                    <div class="msg">${isImage
-    ? `<img src="${msg}" style="max-width:300px;border-radius:12px;">`
-    : `<div class="text">${msg}</div>`
+                    <div class="msg">${
+    isImage
+        ? `<img src="${msg}" style="max-width:300px;border-radius:12px;">`
+        : isVideo
+            ? `
+                <video controls style="max-width:300px;border-radius:12px;">
+                    <source src="${msg}">
+                </video>
+              `
+            : `<div class="text">${msg}</div>`
+}
 }</div>
                     <div class="time">${time}</div>
                 </div>
