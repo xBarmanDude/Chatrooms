@@ -240,11 +240,11 @@ function renderMessage(name, msg, isMe, time, id) {
     const div = document.createElement("div");
     div.setAttribute("data-id", id || "");
 
-    const isImage =
-    msg.match(/\.(jpg|jpeg|png|gif|webp)/i);
+    const isCloudinary = msg.includes("cloudinary.com");
 
-const isVideo =
-    msg.match(/\.(mp4|webm|mov)/i);
+const isImage = isCloudinary && msg.includes("/image/upload/");
+const isVideo = isCloudinary && msg.includes("/video/upload/");
+
     const deleteBtn = isMe ? `<button class="deleteBtn" onclick="deleteMessage('${id}', this)">🗑️</button>` : "";
     const copyBtn = `<button class="copyBtn" onclick="copyMessage(this)">📋</button>`;
 
@@ -265,7 +265,6 @@ const isVideo =
                 </video>
               `
             : `<div class="text">${msg}</div>`
-}
 }</div>
                     <div class="myTime">${time}</div>
                 </div>
@@ -287,7 +286,6 @@ const isVideo =
                 </video>
               `
             : `<div class="text">${msg}</div>`
-}
 }</div>
                     <div class="time">${time}</div>
                 </div>
