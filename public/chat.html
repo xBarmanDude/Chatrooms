@@ -109,43 +109,6 @@ socket.on("onlineUsers", (users) => {
     loadUsers();
 });
 
-document.getElementById("imageInput").addEventListener("change", async function () {
-
-    const file = this.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("image", file);
-
-    const res = await fetch("/upload", {
-        method: "POST",
-        body: formData
-    });
-
-    const data = await res.json();
-
-    if (!data.success) {
-        alert("Upload failed");
-        return;
-    }
-
-    if (isDM) {
-        socket.emit("dm", {
-            from: username,
-            to: dmTarget,
-            msg: data.url
-        });
-    } else {
-        socket.emit("message", {
-            name: username,
-            msg: data.url,
-            room: currentRoom
-        });
-    }
-
-    this.value = "";
-});
-
 function switchToGeneral() {
     isDM = false;
     dmTarget = "";
@@ -328,6 +291,60 @@ function sendMessage() {
     }
     input.value = "";
 }
+
+document.getElementById("imageInput").addEventListener("change", async function () {
+    try {
+        const file = this.files[0];
+        if (!file) {
+            console.log("No file selected");
+            return;
+        }
+
+        console.log("Uploading:", file.name);
+
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const res = await fetch("/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        console.log("Upload HTTP status:", res.status);
+
+        const data = await res.json();
+        console.log("Upload response:", data);
+
+        if (!data.success) {
+            alert("Upload failed (server rejected)");
+            return;
+        }
+
+        const msg = data.url;
+
+        // send message (IMPORTANT FIX: include senderId safety)
+        if (isDM) {
+            socket.emit("dm", {
+                from: username,
+                to: dmTarget,
+                msg: msg
+            });
+        } else {
+            socket.emit("message", {
+                name: username,
+                msg: msg,
+                room: currentRoom
+            });
+        }
+
+    } catch (err) {
+        console.log("UPLOAD ERROR:", err);
+        alert("Upload crashed — check console");
+    }
+
+    this.value = "";
+});
+
 </script>
 </body>
 </html>
