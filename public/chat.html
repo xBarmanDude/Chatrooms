@@ -293,8 +293,12 @@ console.log("OFFER CREATED:", offer);
 await peer.setLocalDescription(offer);
 console.log("LOCAL DESCRIPTION SET");
 
-socket.emit("call-user", { to: dmTarget, from: username, offer });
-console.log("OFFER SENT");
+socket.emit("call-user", {
+    to: dmTarget,
+    from: username,
+    offer,
+    fromSocketId: socket.id
+});
 }
 
 socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
@@ -355,8 +359,7 @@ function createPeer() {
     };
 
     pc.onicecandidate = (event) => {
-    console.log("ICE CANDIDATE:", event.candidate);
-
+    console.log("ICE GENERATED:", event.candidate);
     if (event.candidate) {
         socket.emit("ice-candidate", {
             toSocketId: currentCallTargetSocketId,

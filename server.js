@@ -156,9 +156,26 @@ io.on("connection", (socket) => {
 
     // ── CALL SIGNALING (all routed by socket ID) ──
     socket.on("call-user", ({ to, from, offer }) => {
-        const targetId = [...onlineUsers.entries()].find(([id, name]) => name === to)?.[0];
-        if (targetId) io.to(targetId).emit("incoming-call", { from, offer, fromSocketId: socket.id });
+    let targetId = null;
+
+    for (let [id, name] of onlineUsers.entries()) {
+        if (name === to) {
+            targetId = id;
+            break;
+        }
+    }
+
+    if (!targetId) {
+        console.log("CALL FAILED: user not found ->", to);
+        return;
+    }
+
+    io.to(targetId).emit("incoming-call", {
+        from,
+        offer,
+        fromSocketId: socket.id
     });
+});
 
     socket.on("call-accepted", ({ toSocketId, answer }) => {
         io.to(toSocketId).emit("call-accepted", { answer });
