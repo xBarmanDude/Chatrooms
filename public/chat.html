@@ -14,9 +14,17 @@
         <div id="logoutBtn" onclick="window.location.href='/logout'">🚪 Logout</div>
     </div>
     <div id="main">
+
+        <div id="callPopup" style="display:none; position:fixed; top:20px; right:20px; background:#222; padding:15px; border-radius:10px; color:white; z-index:9999;">
+    <div id="callText">Incoming call...</div>
+    <button onclick="acceptCall()">Accept</button>
+    <button onclick="rejectCall()">Reject</button>
+</div>
+
         <div id="chatHeader">🌐 General</div>
         <div id="chat"></div>
         <div id="inputBox">
+
     <input
     type="file"
     id="imageInput"
@@ -30,9 +38,14 @@
 
     <input id="msg" placeholder="Type message..." onkeydown="if(event.key==='Enter') sendMessage()">
 
+    <button class="callBtn" onclick="startCall()">
+    📞
+    </button>
+
     <button class="sendBtn" onclick="sendMessage()">
         ➤
     </button>
+    
 </div>
     </div>
 </div>
@@ -297,6 +310,49 @@ function sendMessage() {
         socket.emit("message", { name: username, msg: input.value, room: currentRoom });
     }
     input.value = "";
+}
+
+function startCall() {
+    if (!isDM || !dmTarget) {
+        alert("Open a DM first to call");
+        return;
+    }
+
+    alert("Calling " + dmTarget + " (next step we connect video)");
+    
+    socket.emit("call-user", {
+        to: dmTarget,
+        from: username,
+        offer: null
+    });
+}
+
+socket.on("incoming-call", (data) => {
+    window.currentCaller = data.from;
+
+    document.getElementById("callText").innerText =
+        "Incoming call from " + data.from;
+
+    document.getElementById("callPopup").style.display = "block";
+});
+
+function acceptCall() {
+    socket.emit("call-accepted", {
+        to: window.currentCaller,
+        answer: "accepted"
+    });
+
+    document.getElementById("callPopup").style.display = "none";
+
+    alert("Call accepted (next step: video will start)");
+}
+
+function rejectCall() {
+    socket.emit("end-call", {
+        to: window.currentCaller
+    });
+
+    document.getElementById("callPopup").style.display = "none";
 }
 
 document.getElementById("imageInput").addEventListener("change", async function () {

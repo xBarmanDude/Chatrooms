@@ -173,6 +173,25 @@ io.on("connection", (socket) => {
         socket.emit("loadMessages", messages);
     });
 
+    socket.on("call-user", (data) => {
+    io.to(data.to).emit("incoming-call", {
+        from: data.from,
+        type: data.type // "audio" or "video"
+    });
+});
+
+socket.on("accept-call", (data) => {
+    io.to(data.to).emit("call-accepted", {
+        from: data.from
+    });
+});
+
+socket.on("reject-call", (data) => {
+    io.to(data.to).emit("call-rejected", {
+        from: data.from
+    });
+});
+
     socket.on("dm", async (data) => {
         if (!data?.from || !data?.to || !data?.msg) return;
 
@@ -218,6 +237,23 @@ io.on("connection", (socket) => {
         await Message.findByIdAndDelete(data.id);
         io.emit("messageDeleted", { id: data.id });
     });
+
+    // CALL SYSTEM (SIGNALING)
+socket.on("call-user", ({ to, offer, from }) => {
+    socket.to(to).emit("incoming-call", { offer, from });
+});
+
+socket.on("call-accepted", ({ to, answer }) => {
+    socket.to(to).emit("call-accepted", { answer });
+});
+
+socket.on("ice-candidate", ({ to, candidate }) => {
+    socket.to(to).emit("ice-candidate", { candidate });
+});
+
+socket.on("end-call", ({ to }) => {
+    socket.to(to).emit("call-ended");
+});
 
     socket.on("disconnect", async () => {
         const username = onlineUsers.get(socket.id);
