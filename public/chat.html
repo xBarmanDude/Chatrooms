@@ -15,6 +15,21 @@
     </div>
     <div id="main">
 
+        <div id="callUI" style="display:none; position:fixed; bottom:20px; right:20px; background:#111; padding:10px; border-radius:12px;">
+    
+    <div style="color:white; font-size:12px; margin-bottom:5px;">
+        🔴 In Call
+    </div>
+
+    <video id="remoteVideo" autoplay playsinline
+    style="width:200px; border-radius:10px; background:black; margin-top:10px;">
+</video>
+<button onclick="endCall()" style="margin-top:10px; width:100%; padding:5px; border-radius:8px; border:none; background:red; color:white;">
+    End Call
+</button>
+
+</div>
+
         <div id="callPopup" style="display:none; position:fixed; top:20px; right:20px; background:#222; padding:15px; border-radius:10px; color:white; z-index:9999;">
     <div id="callText">Incoming call...</div>
     <button onclick="acceptCall()">Accept</button>
@@ -60,6 +75,7 @@ let lastDateLabel = "";
 let unreadCounts = {};
 let onlineUsers = [];
 let lastSeenData = {};
+let peer;
 
 fetch("/session")
     .then(r => r.json())
@@ -327,16 +343,45 @@ function startCall() {
     });
 }
 
-socket.on("incoming-call", (data) => {
+socket.on("incoming-call", async (data) => {
     window.currentCaller = data.from;
 
     document.getElementById("callText").innerText =
         "Incoming call from " + data.from;
 
     document.getElementById("callPopup").style.display = "block";
+
+    window.incomingOffer = data.offer;
 });
 
-function acceptCall() {
+socket.on("call-accepted", async () => {
+    createPeer();
+
+    const offer = window.incomingOffer;
+
+    await peer.setRemoteDescription(new RTCSessionDescription(offer));
+
+    const answer = await peer.createAnswer();
+    await peer.setLocalDescription(answer);
+
+    socket.emit("call-user", {
+        to: window.currentCaller,
+        from: username,
+        offer: answer
+    });
+});
+
+socket.on("ice-candidate", async ({ candidate }) => {
+    try {
+        if (peer && candidate) {
+            await peer.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+    } catch (e) {
+        console.log("ICE error:", e);
+    }
+});
+
+async function acceptCall() {
     socket.emit("call-accepted", {
         to: window.currentCaller,
         answer: "accepted"
@@ -344,7 +389,18 @@ function acceptCall() {
 
     document.getElementById("callPopup").style.display = "none";
 
-    alert("Call accepted (next step: video will start)");
+    await openCamera();
+
+    createPeer();
+
+    const offer = await peer.createOffer();
+    await peer.setLocalDescription(offer);
+
+    socket.emit("call-user", {
+        to: window.currentCaller,
+        from: username,
+        offer: offer
+    });
 }
 
 function rejectCall() {
@@ -353,6 +409,86 @@ function rejectCall() {
     });
 
     document.getElementById("callPopup").style.display = "none";
+}
+
+async function openCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+        });
+
+        const video = document.getElementById("localVideo");
+video.srcObject = stream;
+
+window.localStream = stream;
+
+document.getElementById("callUI").style.display = "block";
+
+        window.localStream = stream;
+
+        console.log("Camera opened");
+    } catch (err) {
+        console.log("Camera error:", err);
+        alert("Camera access denied or not available");
+    }
+}
+
+function endCall() {
+    socket.emit("end-call", {
+        to: window.currentCaller
+    });
+
+    cleanupCall();
+}
+
+function cleanupCall() {
+    if (peer) {
+        peer.close();
+        peer = null;
+    }
+
+    if (window.localStream) {
+        window.localStream.getTracks().forEach(track => track.stop());
+        window.localStream = null;
+    }
+
+    document.getElementById("localVideo").srcObject = null;
+    document.getElementById("remoteVideo").srcObject = null;
+
+    document.getElementById("callUI").style.display = "none";
+}
+
+socket.on("call-ended", () => {
+    cleanupCall();
+});
+
+function createPeer() {
+    peer = new RTCPeerConnection({
+        iceServers: [
+            { urls: "stun:stun.l.google.com:19302" }
+        ]
+    });
+
+    // send local tracks
+    window.localStream.getTracks().forEach(track => {
+        peer.addTrack(track, window.localStream);
+    });
+
+    // receive remote stream
+    peer.ontrack = (event) => {
+        document.getElementById("remoteVideo").srcObject = event.streams[0];
+    };
+
+    // ICE candidates
+    peer.onicecandidate = (event) => {
+        if (event.candidate) {
+            socket.emit("ice-candidate", {
+                to: window.currentCaller,
+                candidate: event.candidate
+            });
+        }
+    };
 }
 
 document.getElementById("imageInput").addEventListener("change", async function () {
