@@ -139,7 +139,16 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("dm", async (data) => {
-    const from = onlineUsers.get(socket.id); // ✅ real sender from server
+
+        console.log("DM DEBUG:", {
+        socketId: socket.id,
+        from: onlineUsers.get(socket.id),
+        to: data.to,
+        msg: data.msg
+    });
+
+    const from = onlineUsers.get(socket.id); // ALWAYS server truth
+
     if (!from || !data?.to || !data?.msg) return;
 
     const dmRoom = [from, data.to].sort().join("_");
@@ -149,6 +158,14 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
         msg: data.msg,
         room: dmRoom,
         to: data.to,
+        isDM: true
+    });
+
+    io.to(dmRoom).emit("message", {
+        name: from,
+        msg: data.msg,
+        room: dmRoom,
+        senderId: socket.id,
         isDM: true
     });
 
