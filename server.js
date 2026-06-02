@@ -81,9 +81,16 @@ app.get("/users", async (req, res) => {
 
 app.use(express.static("public"));
 
+const onlineUsers = new Map();
+
 // Socket
 io.on("connection", async (socket) => {
     console.log("User connected:", socket.id);
+    socket.on("userOnline", (username) => {
+    onlineUsers.set(socket.id, username);
+
+    io.emit("onlineUsers", Array.from(onlineUsers.values()));
+});
 
 socket.on("joinRoom", async (room) => {
     socket.join(room);
@@ -128,8 +135,12 @@ socket.on("dm", async (data) => {
 });
 
     socket.on("disconnect", () => {
-        console.log("User disconnected:", socket.id);
-    });
+    onlineUsers.delete(socket.id);
+
+    io.emit("onlineUsers", Array.from(onlineUsers.values()));
+
+    console.log("User disconnected:", socket.id);
+});
 });
 
 server.listen(process.env.PORT || 3000, () => {
