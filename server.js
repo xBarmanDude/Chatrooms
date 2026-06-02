@@ -48,9 +48,9 @@ app.use(session({
     secret: "chatapp_secret",
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({
-        mongoUrl: "mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0"
-    }),
+    store: new MongoStore({
+    mongoUrl: "mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0"
+}),
     cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 7
     }
