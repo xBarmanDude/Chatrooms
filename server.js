@@ -139,7 +139,6 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("dm", async (data) => {
-
     const from = (data.from || "").trim().toLowerCase();
     const to = (data.to || "").trim().toLowerCase();
     const msg = data.msg;
@@ -147,8 +146,6 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     if (!from || !to || !msg) return;
 
     const dmRoom = [from, to].sort().join("_");
-
-    console.log("DM ROOM:", dmRoom);
 
     await Message.create({
         name: from,

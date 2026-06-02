@@ -258,8 +258,8 @@ function sendMessage() {
     insertDateDivider(getDateLabel(new Date()));
     renderMessage(username, input.value, true);
     if (isDM) socket.emit("dm", {
-    from: username.trim().toLowerCase(),
-    to: dmTarget.trim().toLowerCase(),
+    from: username,
+    to: dmTarget,
     msg: input.value
 });
     else socket.emit("message", { name: username, msg: input.value, room: currentRoom });
