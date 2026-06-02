@@ -190,10 +190,9 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
 
     if (username) {
         userSocketMap.delete(username);
+        onlineUsers.delete(socket.id);
         await User.updateOne({ username }, { lastSeen: new Date() });
     }
-
-    onlineUsers.delete(socket.id);
 
     io.emit("onlineUsers", Array.from(userSocketMap.keys()));
 });

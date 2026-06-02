@@ -284,22 +284,32 @@ document.getElementById("imageInput").addEventListener("change", async function 
 
 // ── CALL SYSTEM ──
 async function startCall() {
-    if (!isDM || !dmTarget) { alert("Open a DM first to call"); return; }
+    if (!isDM || !dmTarget) {
+        alert("Open a DM first to call");
+        return;
+    }
+
+    if (peer) {
+        peer.close();
+        peer = null;
+    }
+
+    pendingCandidates = [];
+
     await openCamera();
     if (!localStream) return;
+
     peer = createPeer();
+
     const offer = await peer.createOffer();
-console.log("OFFER CREATED:", offer);
+    await peer.setLocalDescription(offer);
 
-await peer.setLocalDescription(offer);
-console.log("LOCAL DESCRIPTION SET");
-
-socket.emit("call-user", {
-    to: dmTarget,
-    from: username,
-    offer,
-    fromSocketId: socket.id
-});
+    socket.emit("call-user", {
+        to: dmTarget,
+        from: username,
+        offer,
+        fromSocketId: socket.id
+    });
 }
 
 socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
@@ -311,6 +321,11 @@ socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
 
 async function acceptCall() {
     document.getElementById("callPopup").style.display = "none";
+    if (peer) {
+    peer.close();
+    peer = null;
+}
+pendingCandidates = [];
     await openCamera();
     if (!localStream) return;
     peer = createPeer();
@@ -336,18 +351,16 @@ socket.on("call-accepted", async ({ answer }) => {
 
 socket.on("ice-candidate", async ({ candidate }) => {
     try {
-        if (!candidate) return;
+        if (!peer || !candidate) return;
 
         const ice = new RTCIceCandidate(candidate);
 
-        // if remoteDescription not set yet → queue it
-        if (!peer || !peer.remoteDescription) {
+        if (!peer.remoteDescription) {
             pendingCandidates.push(ice);
             return;
         }
 
         await peer.addIceCandidate(ice);
-
     } catch (e) {
         console.log("ICE error:", e);
     }
