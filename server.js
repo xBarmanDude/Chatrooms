@@ -132,8 +132,8 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("joinDM", async (data) => {
-        const from = data.from.trim();
-const to = data.to.trim();
+        const from = data.from;
+const to = data.to;
 const dmRoom = [from, to].sort().join("_");
         socket.join(dmRoom);
         const messages = await Message.find({ room: dmRoom, isDM: true }).sort({ time: 1 }).limit(50);
@@ -141,8 +141,8 @@ const dmRoom = [from, to].sort().join("_");
     });
 
     socket.on("dm", async (data) => {
-    const from = (data.from || "").trim().toLowerCase();
-    const to = (data.to || "").trim().toLowerCase();
+    const from = (data.from || "");
+    const to = (data.to || "");
     const msg = data.msg;
 
     if (!from || !to || !msg) return;
