@@ -148,13 +148,15 @@ socket.on("joinRoom", async (room) => {
     socket.emit("loadMessages", messages);
 });
 
-socket.on("getLastSeen", () => {
+socket.on("getLastSeen", async () => {
     const users = await User.find({}, "username lastSeen").lean();
-const map = {};
-users.forEach(u => {
-    if (u.lastSeen) map[u.username] = u.lastSeen;
-});
-socket.emit("lastSeenData", map);
+
+    const map = {};
+    users.forEach(u => {
+        if (u.lastSeen) map[u.username] = u.lastSeen;
+    });
+
+    socket.emit("lastSeenData", map);
 });
 
 socket.on("joinDM", async (data) => {
