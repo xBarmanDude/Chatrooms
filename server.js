@@ -197,6 +197,7 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
 
     io.emit("onlineUsers", Array.from(userSocketMap.keys()));
 });
+});
 
 server.listen(process.env.PORT || 3000, () => {
     console.log("Server running on port " + (process.env.PORT || 3000));
