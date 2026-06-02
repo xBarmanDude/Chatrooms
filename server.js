@@ -173,25 +173,6 @@ io.on("connection", (socket) => {
         socket.emit("loadMessages", messages);
     });
 
-    socket.on("call-user", (data) => {
-    io.to(data.to).emit("incoming-call", {
-        from: data.from,
-        type: data.type // "audio" or "video"
-    });
-});
-
-socket.on("accept-call", (data) => {
-    io.to(data.to).emit("call-accepted", {
-        from: data.from
-    });
-});
-
-socket.on("reject-call", (data) => {
-    io.to(data.to).emit("call-rejected", {
-        from: data.from
-    });
-});
-
     socket.on("dm", async (data) => {
         if (!data?.from || !data?.to || !data?.msg) return;
 
