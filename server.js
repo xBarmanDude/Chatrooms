@@ -147,7 +147,7 @@ const dmRoom = [data.from.trim(), data.to.trim()].sort().join("_");
 
     if (!from || !to || !msg) return;
 
-    const dmRoom = [from, to].sort().join("_");
+    const dmRoom = [from.trim(), to.trim()].sort().join("_");
 
     await Message.create({
         name: from,
