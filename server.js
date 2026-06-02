@@ -132,42 +132,38 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("joinDM", async (data) => {
-    const from = data.from.trim().toLowerCase();
-    const to = data.to.trim().toLowerCase();
-
-    const dmRoom = [from, to].sort().join("_");
-
-    socket.join(dmRoom);
-
-    const messages = await Message.find({
-        room: dmRoom,
-        isDM: true
-    }).sort({ time: 1 }).limit(50);
-
-    socket.emit("loadMessages", messages);
-});
+        const dmRoom = [data.from, data.to].sort().join("_");
+        socket.join(dmRoom);
+        const messages = await Message.find({ room: dmRoom, isDM: true }).sort({ time: 1 }).limit(50);
+        socket.emit("loadMessages", messages);
+    });
 
     socket.on("dm", async (data) => {
-    if (!data?.from || !data?.to || !data?.msg) return;
 
-    const from = data.from.trim().toLowerCase();
-    const to = data.to.trim().toLowerCase();
+    const from = (data.from || "").trim().toLowerCase();
+    const to = (data.to || "").trim().toLowerCase();
+    const msg = data.msg;
+
+    if (!from || !to || !msg) return;
 
     const dmRoom = [from, to].sort().join("_");
+
+    console.log("DM ROOM:", dmRoom);
 
     await Message.create({
         name: from,
-        msg: data.msg,
+        msg,
         room: dmRoom,
-        to: to,
+        to,
         isDM: true
     });
 
     io.to(dmRoom).emit("message", {
         name: from,
-        msg: data.msg,
+        msg,
         room: dmRoom,
-        senderId: socket.id
+        senderId: socket.id,
+        isDM: true
     });
 });
 
