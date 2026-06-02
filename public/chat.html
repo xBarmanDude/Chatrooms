@@ -288,8 +288,13 @@ async function startCall() {
     if (!localStream) return;
     peer = createPeer();
     const offer = await peer.createOffer();
-    await peer.setLocalDescription(offer);
-    socket.emit("call-user", { to: dmTarget, from: username, offer });
+console.log("OFFER CREATED:", offer);
+
+await peer.setLocalDescription(offer);
+console.log("LOCAL DESCRIPTION SET");
+
+socket.emit("call-user", { to: dmTarget, from: username, offer });
+console.log("OFFER SENT");
 }
 
 socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
@@ -328,24 +333,42 @@ socket.on("call-ended", () => cleanupCall());
 
 function createPeer() {
     const pc = new RTCPeerConnection({
-    iceServers: [
-        { urls: "stun:stun.relay.metered.ca:80" },
-        { urls: "turn:global.relay.metered.ca:80", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" },
-        { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" },
-        { urls: "turn:global.relay.metered.ca:443", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" },
-        { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" }
-    ]
-});
+        iceServers: [
+            { urls: "stun:stun.relay.metered.ca:80" },
+            { urls: "turn:global.relay.metered.ca:80", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" },
+            { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" },
+            { urls: "turn:global.relay.metered.ca:443", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" },
+            { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" }
+        ]
+    });
+
+    // 👇 ADD THIS (STEP 1 DEBUG ONLY)
+    pc.oniceconnectionstatechange = () => {
+        console.log("ICE STATE:", pc.iceConnectionState);
+    };
+
+    pc.onconnectionstatechange = () => {
+        console.log("PC STATE:", pc.connectionState);
+    };
+
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
     pc.ontrack = (event) => {
         const video = document.getElementById("remoteVideo");
         video.srcObject = event.streams[0];
     };
+
     pc.onicecandidate = (event) => {
-        if (event.candidate) {
-            socket.emit("ice-candidate", { toSocketId: currentCallTargetSocketId, candidate: event.candidate });
-        }
-    };
+    console.log("ICE CANDIDATE:", event.candidate);
+
+    if (event.candidate) {
+        socket.emit("ice-candidate", {
+            toSocketId: currentCallTargetSocketId,
+            candidate: event.candidate
+        });
+    }
+};
+
     return pc;
 }
 
