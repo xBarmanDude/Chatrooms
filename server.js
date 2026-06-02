@@ -4,12 +4,24 @@ const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const session = require("express-session");
+const cloudinary = require("cloudinary").v2;
+const multer = require("multer");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 mongoose.connect("mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0");
+
+cloudinary.config({
+    cloud_name: "dfdpgmrtz",
+    api_key: "149859293988411",
+    api_secret: "zTciMovkqHrtN6rVQNXjS3N_DL8"
+});
+
+const upload = multer({
+    storage: multer.memoryStorage()
+});
 
 // Models
 const Message = mongoose.model("Message", new mongoose.Schema({
@@ -77,6 +89,33 @@ app.get("/users", async (req, res) => {
     if (!req.session.username) return res.json({ error: "Not logged in" });
     const users = await User.find({}, "username").lean();
     res.json(users.filter(u => u.username !== req.session.username));
+});
+
+app.post("/upload", upload.single("image"), async (req, res) => {
+    try {
+        const result = await new Promise((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+                {
+                    folder: "chat_uploads"
+                },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            ).end(req.file.buffer);
+        });
+
+        res.json({
+            success: true,
+            url: result.secure_url
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            success: false
+        });
+    }
 });
 
 app.use(express.static("public"));
