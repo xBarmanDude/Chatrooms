@@ -136,15 +136,18 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     const to = data.to;
     const dmRoom = [from, to].sort().join("_");
     
-    // >>> TEMPORARY DEBUG LOGS <<<
-    console.log("=== DM REFRESH DEBUG ===");
-    console.log("From frontend (sender):", from);
-    console.log("From frontend (receiver):", to);
-    console.log("Generated Room Name:", dmRoom);
-    console.log("========================");
-
+    // >>> THIS WILL SHOW US THE TRUTH IN THE RENDER LOGS <<<
+    console.log("=== RENDER LIVE DEBUG ===");
+    console.log(`User Opening DM: "${from}"`);
+    console.log(`Target User: "${to}"`);
+    console.log(`Looking for MongoDB Room: "${dmRoom}"`);
+    
     socket.join(dmRoom);
     const messages = await Message.find({ room: dmRoom, isDM: true }).sort({ time: 1 }).limit(50);
+    
+    console.log(`Found ${messages.length} messages in database for this room.`);
+    console.log("=========================");
+
     socket.emit("loadMessages", messages);
 });
 
