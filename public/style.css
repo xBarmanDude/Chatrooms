@@ -184,11 +184,59 @@ body {
 .messageWrapper.meWrapper { align-items: flex-end; }
 .messageWrapper:not(.meWrapper) { align-items: flex-start; }
 
+/* ── MESSAGE ROW (bubble + actions side by side) ── */
+
+.msgRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bubbleCol {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── MESSAGE ACTIONS ── */
+
+.msgActions {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.msgRow:hover .msgActions {
+    display: flex;
+}
+
+.deleteBtn, .copyBtn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 4px 7px;
+    border-radius: 7px;
+    color: rgba(255,255,255,0.45);
+    transition: 0.2s;
+    line-height: 1;
+}
+
+.deleteBtn:hover {
+    background: rgba(255,50,50,0.15);
+    color: rgba(255,100,100,0.9);
+    border-color: rgba(255,50,50,0.2);
+}
+
+.copyBtn:hover {
+    background: rgba(255,255,255,0.12);
+    color: white;
+}
+
 /* ── MESSAGE BUBBLES ── */
 
 .msg {
     display: inline-block;
-    max-width: 55%;
+    max-width: 420px;
     padding: 10px 16px;
     border-radius: 18px;
     word-break: break-word;
@@ -319,52 +367,4 @@ body {
 #authBox button:hover {
     transform: scale(1.03);
     box-shadow: 0 0 12px rgba(0,200,83,0.5);
-}
-/* ── MESSAGE ACTIONS ── */
-
-.msgActions {
-    display: none;
-    gap: 4px;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-.messageWrapper:hover .msgActions {
-    display: flex;
-}
-
-.meWrapper {
-    flex-direction: row-reverse;
-    align-items: center;
-}
-
-.messageWrapper:not(.meWrapper) {
-    flex-direction: row;
-    align-items: center;
-}
-
-.deleteBtn, .copyBtn {
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.08);
-    cursor: pointer;
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 8px;
-    color: rgba(255,255,255,0.5);
-    transition: 0.2s;
-}
-
-.deleteBtn:hover {
-    background: rgba(255,50,50,0.15);
-    color: rgba(255,100,100,0.9);
-    border-color: rgba(255,50,50,0.2);
-}
-
-.copyBtn:hover {
-    background: rgba(255,255,255,0.12);
-    color: white;
-}
-.bubbleCol {
-    display: flex;
-    flex-direction: column;
 }
