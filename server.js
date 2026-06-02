@@ -140,7 +140,7 @@ const dmRoom = [from, to].sort().join("_");
         socket.emit("loadMessages", messages);
     });
 
-    socket.on("dm", async (data) => {
+    const dmRoom = [data.from.trim(), data.to.trim()].sort().join("_");
     const from = (data.from || "");
     const to = (data.to || "");
     const msg = data.msg;
