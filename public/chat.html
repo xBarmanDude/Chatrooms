@@ -334,12 +334,8 @@ socket.on("call-ended", () => cleanupCall());
 function createPeer() {
     const pc = new RTCPeerConnection({
         iceServers: [
-            { urls: "stun:stun.relay.metered.ca:80" },
-            { urls: "turn:global.relay.metered.ca:80", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" },
-            { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" },
-            { urls: "turn:global.relay.metered.ca:443", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" },
-            { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: "c2d83abaac5386c60887ab08", credential: "Nrajd0jgAqz+G6Jp" }
-        ]
+    { urls: "stun:stun.l.google.com:19302" }
+]
     });
 
     // 👇 ADD THIS (STEP 1 DEBUG ONLY)
