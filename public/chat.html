@@ -6,6 +6,7 @@
 </head>
 <body>
 <div id="appContainer">
+
     <div id="sidebar">
         <div id="sidebarHeader">💬 Chat Rooms</div>
         <div class="sidebarItem active" onclick="switchToGeneral()">🌐 General</div>
@@ -13,32 +14,37 @@
         <div id="userList"></div>
         <div id="logoutBtn" onclick="window.location.href='/logout'">🚪 Logout</div>
     </div>
+
     <div id="main">
         <div id="chatHeader">🌐 General</div>
         <div id="chat"></div>
+
         <div id="inputBox">
-    <input
-    type="file"
-    id="imageInput"
-    accept="image/*,video/*"
-    style="display:none"
->
 
-    <button class="attachBtn" onclick="document.getElementById('imageInput').click()">
-    📎
-</button>
+            <!-- FILE INPUT -->
+            <input type="file" id="imageInput" accept="image/*,video/*" style="display:none">
 
-    <input id="msg" placeholder="Type message..." onkeydown="if(event.key==='Enter') sendMessage()">
+            <!-- ATTACH BUTTON -->
+            <button class="attachBtn" onclick="document.getElementById('imageInput').click()">
+                📎
+            </button>
 
-    <button class="sendBtn" onclick="sendMessage()">
-        ➤
-    </button>
-</div>
+            <!-- TEXT INPUT -->
+            <input id="msg" placeholder="Type message..."
+                onkeydown="if(event.key==='Enter') sendMessage()">
+
+            <!-- SEND BUTTON -->
+            <button class="sendBtn" onclick="sendMessage()">➤</button>
+        </div>
+
     </div>
 </div>
+
 <script src="/socket.io/socket.io.js"></script>
+
 <script>
 const socket = io();
+
 let username = "";
 let currentRoom = "general";
 let isDM = false;
@@ -48,205 +54,125 @@ let unreadCounts = {};
 let onlineUsers = [];
 let lastSeenData = {};
 
+// ---------------- INIT ----------------
 fetch("/session")
-    .then(r => r.json())
-    .then(data => {
+.then(r => r.json())
+.then(data => {
     username = data.username;
-
     socket.emit("userOnline", username);
-
     socket.emit("joinRoom", currentRoom);
     loadUsers();
 });
 
+// ---------------- USERS ----------------
 function loadUsers() {
     fetch("/users")
-        .then(r => r.json())
-        .then(users => {
-            const list = document.getElementById("userList");
-            list.innerHTML = "";
-            users.forEach(u => {
-                const div = document.createElement("div");
-                div.classList.add("sidebarItem");
-                div.id = "dm-" + u.username;
-                const isOnline = onlineUsers.includes(u.username);
+    .then(r => r.json())
+    .then(users => {
+        const list = document.getElementById("userList");
+        list.innerHTML = "";
 
-let statusText = "Online";
+        users.forEach(u => {
+            const div = document.createElement("div");
+            div.classList.add("sidebarItem");
 
-if (!isOnline && lastSeenData[u.username]) {
-    const mins = Math.floor((Date.now() - lastSeenData[u.username]) / 60000);
+            const isOnline = onlineUsers.includes(u.username);
 
-    if (mins < 1) {
-        statusText = "Last seen just now";
-    } else if (mins === 1) {
-        statusText = "Last seen 1 minute ago";
-    } else {
-        statusText = `Last seen ${mins} minutes ago`;
-    }
-}
+            let statusText = "Online";
 
-div.innerHTML = `
-<div>
-    <div>${isOnline ? "🟢" : "⚫"} ${u.username}</div>
-    <div style="font-size:11px;color:rgba(255,255,255,0.45)">
-        ${statusText}
-    </div>
-</div>
+            if (!isOnline && lastSeenData[u.username]) {
+                const mins = Math.floor((Date.now() - lastSeenData[u.username]) / 60000);
+                statusText =
+                    mins < 1 ? "Last seen just now" :
+                    mins === 1 ? "Last seen 1 minute ago" :
+                    `Last seen ${mins} minutes ago`;
+            }
 
-<span class="unreadBadge" id="badge-${u.username}" style="display:none">0</span>
-`;
-                div.onclick = () => openDM(u.username, div);
-                list.appendChild(div);
-            });
+            div.innerHTML = `
+                <div>
+                    <div>${isOnline ? "🟢" : "⚫"} ${u.username}</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.45)">
+                        ${statusText}
+                    </div>
+                </div>
+                <span class="unreadBadge" id="badge-${u.username}" style="display:none">0</span>
+            `;
+
+            div.onclick = () => openDM(u.username, div);
+            list.appendChild(div);
         });
+    });
 }
 
+// ---------------- ONLINE USERS ----------------
 socket.on("onlineUsers", (users) => {
     onlineUsers = users;
-
     socket.emit("getLastSeen");
-
     loadUsers();
 });
 
+// ---------------- UPLOAD FIX (IMPORTANT PART) ----------------
 document.getElementById("imageInput").addEventListener("change", async function () {
+    try {
+        const file = this.files[0];
+        if (!file) return;
 
-    const file = this.files[0];
-    if (!file) return;
+        const formData = new FormData();
+        formData.append("image", file);
 
-    const formData = new FormData();
-    formData.append("image", file);
+        const res = await fetch("/upload", {
+            method: "POST",
+            body: formData
+        });
 
-    const res = await fetch("/upload", {
-        method: "POST",
-        body: formData
-    });
+        const data = await res.json();
 
-    const data = await res.json();
+        if (!data.success) {
+            alert("Upload failed");
+            return;
+        }
 
-    if (!data.success) {
-        alert("Upload failed");
-        return;
-    }
-
-    if (isDM) {
-        socket.emit("dm", {
+        const msgObj = {
             from: username,
             to: dmTarget,
-            msg: data.url
-        });
-    } else {
-        socket.emit("message", {
             name: username,
-            msg: data.url,
-            room: currentRoom
-        });
+            room: currentRoom,
+            msg: data.url
+        };
+
+        if (isDM) socket.emit("dm", msgObj);
+        else socket.emit("message", msgObj);
+
+    } catch (err) {
+        console.log("UPLOAD ERROR:", err);
     }
 
     this.value = "";
 });
 
-function switchToGeneral() {
-    isDM = false;
-    dmTarget = "";
-    currentRoom = "general";
-    lastDateLabel = "";
-    document.getElementById("chat").innerHTML = "";
-    document.getElementById("chatHeader").innerText = "🌐 General";
-    document.querySelectorAll(".sidebarItem").forEach(i => i.classList.remove("active"));
-    document.querySelector(".sidebarItem").classList.add("active");
-    socket.emit("joinRoom", currentRoom);
-}
-
-function openDM(target, el) {
-    isDM = true;
-    dmTarget = target;
-    lastDateLabel = "";
-    document.getElementById("chat").innerHTML = "";
-    document.getElementById("chatHeader").innerText = "💌 " + target;
-    document.querySelectorAll(".sidebarItem").forEach(i => i.classList.remove("active"));
-    el.classList.add("active");
-    // clear unread
-    unreadCounts[target] = 0;
-    const badge = document.getElementById("badge-" + target);
-    if (badge) badge.style.display = "none";
-    socket.emit("joinDM", { from: username, to: target });
-}
-
-function getDateLabel(dateStr) {
-    const d = new Date(dateStr);
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-    if (d.toDateString() === today.toDateString()) return "Today";
-    if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
-    return d.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
-}
-
-function insertDateDivider(dateLabel) {
-    if (dateLabel === lastDateLabel) return;
-    lastDateLabel = dateLabel;
-    const div = document.createElement("div");
-    div.classList.add("dateDivider");
-    div.innerHTML = `<span>${dateLabel}</span>`;
-    document.getElementById("chat").appendChild(div);
-}
-
-socket.on("loadMessages", (messages) => {
-    document.getElementById("chat").innerHTML = "";
-    lastDateLabel = "";
-    messages.forEach((data) => {
-        const t = new Date(data.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        const dateLabel = getDateLabel(data.time);
-        insertDateDivider(dateLabel);
-        renderMessage(data.name, data.msg, data.name === username, t, data._id);
-    });
-});
-
-socket.on("lastSeenData", (data) => {
-    lastSeenData = data;
-    loadUsers();
-});
-
-socket.on("message", (data) => {
-    if (data.senderId !== socket.id) {
-        const now = new Date();
-        const dateLabel = getDateLabel(now);
-        insertDateDivider(dateLabel);
-        renderMessage(data.name, data.msg, false);
-
-        // unread badge for DMs
-        if (isDM && dmTarget !== data.name) {
-            unreadCounts[data.name] = (unreadCounts[data.name] || 0) + 1;
-            const badge = document.getElementById("badge-" + data.name);
-            if (badge) {
-                badge.innerText = unreadCounts[data.name];
-                badge.style.display = "inline-block";
-            }
-        } else if (!isDM && data.room !== "general") {
-            // DM received while in general
-            unreadCounts[data.name] = (unreadCounts[data.name] || 0) + 1;
-            const badge = document.getElementById("badge-" + data.name);
-            if (badge) {
-                badge.innerText = unreadCounts[data.name];
-                badge.style.display = "inline-block";
-            }
-        }
-    }
-});
-
+// ---------------- RENDER MESSAGE ----------------
 function renderMessage(name, msg, isMe, time, id) {
     time = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
     const div = document.createElement("div");
     div.setAttribute("data-id", id || "");
 
     const isCloudinary = msg.includes("cloudinary.com");
+    const isImage = isCloudinary && msg.includes("/image/upload/");
+    const isVideo = isCloudinary && msg.includes("/video/upload/");
 
-const isImage = isCloudinary && msg.includes("/image/upload/");
-const isVideo = isCloudinary && msg.includes("/video/upload/");
+    const deleteBtn = isMe
+        ? `<button class="deleteBtn" onclick="deleteMessage('${id}', this)">🗑️</button>`
+        : "";
 
-    const deleteBtn = isMe ? `<button class="deleteBtn" onclick="deleteMessage('${id}', this)">🗑️</button>` : "";
     const copyBtn = `<button class="copyBtn" onclick="copyMessage(this)">📋</button>`;
+
+    const content =
+        isImage ? `<img src="${msg}" style="max-width:300px;border-radius:12px;">`
+        : isVideo ? `<video controls style="max-width:300px;border-radius:12px;">
+                        <source src="${msg}">
+                     </video>`
+        : `<div class="text">${msg}</div>`;
 
     if (isMe) {
         div.classList.add("messageWrapper", "meWrapper");
@@ -255,17 +181,7 @@ const isVideo = isCloudinary && msg.includes("/video/upload/");
                 <div class="msgActions meActions">${copyBtn}${deleteBtn}</div>
                 <div class="bubbleCol">
                     <div class="mySender">You</div>
-                    <div class="msg me">${
-    isImage
-        ? `<img src="${msg}" style="max-width:300px;border-radius:12px;">`
-        : isVideo
-            ? `
-                <video controls style="max-width:300px;border-radius:12px;">
-                    <source src="${msg}">
-                </video>
-              `
-            : `<div class="text">${msg}</div>`
-}</div>
+                    <div class="msg me">${content}</div>
                     <div class="myTime">${time}</div>
                 </div>
             </div>
@@ -276,56 +192,43 @@ const isVideo = isCloudinary && msg.includes("/video/upload/");
             <div class="msgRow">
                 <div class="bubbleCol">
                     <div class="sender">${name}</div>
-                    <div class="msg">${
-    isImage
-        ? `<img src="${msg}" style="max-width:300px;border-radius:12px;">`
-        : isVideo
-            ? `
-                <video controls style="max-width:300px;border-radius:12px;">
-                    <source src="${msg}">
-                </video>
-              `
-            : `<div class="text">${msg}</div>`
-}</div>
+                    <div class="msg">${content}</div>
                     <div class="time">${time}</div>
                 </div>
                 <div class="msgActions themActions">${copyBtn}</div>
             </div>
         `;
     }
+
     document.getElementById("chat").appendChild(div);
     document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
 }
 
-function deleteMessage(id, btn) {
-    const wrapper = btn.closest(".messageWrapper");
-    wrapper.remove();
-    socket.emit("deleteMessage", { id });
-}
-
+// ---------------- COPY FIX ----------------
 function copyMessage(btn) {
     const row = btn.closest(".msgRow");
-    const text = row.querySelector(".text").innerText;
+    const text = row.querySelector(".text")?.innerText || "";
     navigator.clipboard.writeText(text);
 }
 
-socket.on("messageDeleted", (data) => {
-    const el = document.querySelector(`[data-id="${data.id}"]`);
-    if (el) el.remove();
-});
-
+// ---------------- SEND TEXT ----------------
 function sendMessage() {
     const input = document.getElementById("msg");
     if (!input.value.trim()) return;
-    const now = new Date();
-    const dateLabel = getDateLabel(now);
-    insertDateDivider(dateLabel);
+
+    const msgObj = {
+        name: username,
+        msg: input.value,
+        room: currentRoom,
+        from: username,
+        to: dmTarget
+    };
+
     renderMessage(username, input.value, true);
-    if (isDM) {
-        socket.emit("dm", { from: username, to: dmTarget, msg: input.value });
-    } else {
-        socket.emit("message", { name: username, msg: input.value, room: currentRoom });
-    }
+
+    if (isDM) socket.emit("dm", msgObj);
+    else socket.emit("message", msgObj);
+
     input.value = "";
 }
 </script>
