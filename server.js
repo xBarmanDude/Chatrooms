@@ -139,16 +139,38 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("dm", async (data) => {
-        if (!data?.from || !data?.to || !data?.msg) return;
-        const dmRoom = [data.from, data.to].sort().join("_");
-        await Message.create({ name: data.from, msg: data.msg, room: dmRoom, to: data.to, isDM: true });
-        io.to(dmRoom).emit("message", { name: data.from, msg: data.msg, room: dmRoom, senderId: socket.id });
+    const from = onlineUsers.get(socket.id); // ✅ real sender from server
+    if (!from || !data?.to || !data?.msg) return;
+
+    const dmRoom = [from, data.to].sort().join("_");
+
+    await Message.create({
+        name: from,
+        msg: data.msg,
+        room: dmRoom,
+        to: data.to,
+        isDM: true
     });
+
+    io.to(dmRoom).emit("message", {
+        name: from,
+        msg: data.msg,
+        room: dmRoom,
+        senderId: socket.id,
+        isDM: true
+    });
+});
 
     socket.on("message", async (data) => {
         if (!data?.room || !data?.msg || !data?.name) return;
         await Message.create({ name: data.name, msg: data.msg, room: data.room, isDM: false });
-        io.to(data.room).emit("message", { name: data.name, msg: data.msg, room: data.room, senderId: socket.id });
+        io.to(data.room).emit("message", {
+    name: data.name,
+    msg: data.msg,
+    room: data.room,
+    senderId: socket.id,
+    isDM: false
+});
     });
 
     socket.on("deleteMessage", async (data) => {
