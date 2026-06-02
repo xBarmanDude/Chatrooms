@@ -321,6 +321,7 @@ document.getElementById("imageInput").addEventListener("change", async function 
         }
 
         const msg = data.url;
+        renderMessage(username, msg, true, null, null);
 
         // send message (IMPORTANT FIX: include senderId safety)
         if (isDM) {
