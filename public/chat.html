@@ -62,6 +62,7 @@ let lastDateLabel = "";
 let unreadCounts = {};
 let onlineUsers = [];
 let lastSeenData = {};
+let pendingCandidates = [];
 
 // ── CALL STATE ──
 let peer = null;
@@ -314,6 +315,11 @@ async function acceptCall() {
     if (!localStream) return;
     peer = createPeer();
     await peer.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
+    // flush queued ICE candidates
+for (const c of pendingCandidates) {
+    await peer.addIceCandidate(c);
+}
+pendingCandidates = [];
     const answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
     socket.emit("call-accepted", { toSocketId: currentCallTargetSocketId, answer });
@@ -330,15 +336,18 @@ socket.on("call-accepted", async ({ answer }) => {
 
 socket.on("ice-candidate", async ({ candidate }) => {
     try {
-        if (!peer || !candidate) return;
+        if (!candidate) return;
 
-        // ❗ FIX: wait until remote description exists
-        if (!peer.remoteDescription) {
-            console.log("ICE queued (no remoteDescription yet)");
+        const ice = new RTCIceCandidate(candidate);
+
+        // if remoteDescription not set yet → queue it
+        if (!peer || !peer.remoteDescription) {
+            pendingCandidates.push(ice);
             return;
         }
 
-        await peer.addIceCandidate(new RTCIceCandidate(candidate));
+        await peer.addIceCandidate(ice);
+
     } catch (e) {
         console.log("ICE error:", e);
     }
@@ -362,12 +371,15 @@ function createPeer() {
         console.log("PC STATE:", pc.connectionState);
     };
 
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    localStream.getTracks().forEach(track => {
+    pc.addTrack(track, localStream);
+});
 
     pc.ontrack = (event) => {
-        const video = document.getElementById("remoteVideo");
-        video.srcObject = event.streams[0];
-    };
+    const video = document.getElementById("remoteVideo");
+    video.srcObject = event.streams[0];
+    video.play().catch(() => {});
+};
 
     pc.onicecandidate = (event) => {
     console.log("ICE GENERATED:", event.candidate);
