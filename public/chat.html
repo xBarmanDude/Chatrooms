@@ -185,7 +185,8 @@ function deleteMessage(id, btn) {
 }
 
 function copyMessage(btn) {
-    const text = btn.closest(".bubbleCol").querySelector(".text").innerText;
+    const row = btn.closest(".msgRow");
+    const text = row.querySelector(".text").innerText;
     navigator.clipboard.writeText(text);
 }
 
