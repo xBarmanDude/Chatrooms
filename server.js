@@ -206,9 +206,9 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     io.to(targetId).emit("incoming-call", { from, offer, fromSocketId: socket.id });
 });
 
-    socket.on("call-accepted", ({ toSocketId, answer }) => {
-        io.to(toSocketId).emit("call-accepted", { answer });
-    });
+    socket.on("call-accepted", ({ toSocketId, answer, fromSocketId }) => {
+    io.to(toSocketId).emit("call-accepted", { answer, fromSocketId });
+});
 
     socket.on("ice-candidate", ({ toSocketId, candidate }) => {
         io.to(toSocketId).emit("ice-candidate", { candidate });
