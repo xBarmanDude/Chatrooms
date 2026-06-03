@@ -316,9 +316,8 @@ async function startCall() {
     });
 }
 
-// Updated incoming call handler to pass forward the socket ID safely
 socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
-    currentCallTargetSocketId = fromSocketId; // Set it immediately on receipt
+    currentCallTargetSocketId = fromSocketId;
     window.pendingOffer = offer;
     document.getElementById("callText").innerText = "📞 Incoming call from " + from;
     document.getElementById("callPopup").style.display = "flex";
@@ -326,46 +325,23 @@ socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
 
 async function acceptCall() {
     document.getElementById("callPopup").style.display = "none";
-    
     if (peer) {
-        peer.close();
-        peer = null;
-    }
-    pendingCandidates = [];
-    
-    // 1. Open the camera first to fully acquire the media hardware reference
+    peer.close();
+    peer = null;
+}
+pendingCandidates = [];
     await openCamera();
-    if (!localStream) {
-        alert("Could not start camera for the call.");
-        return;
-    }
-    
-    // 2. Build the structural peer bridge
+    if (!localStream) return;
     peer = createPeer();
-    
-    // 3. Complete remote sync configuration 
     await peer.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
-    
-    // 4. Flush any early queued ICE candidates safely now that the description is ready
-    for (const c of pendingCandidates) {
-        try {
-            await peer.addIceCandidate(c);
-        } catch(e) {
-            console.error("Error flushing queued candidate:", e);
-        }
-    }
-    pendingCandidates = [];
-    
-    // 5. Generate the cryptographic answers mapping back to the target session
+    // flush queued ICE candidates
+for (const c of pendingCandidates) {
+    await peer.addIceCandidate(c);
+}
+pendingCandidates = [];
     const answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
-    
-    // 6. Explicitly pass your own socket.id to make the routing symmetrical
-    socket.emit("call-accepted", { 
-        toSocketId: currentCallTargetSocketId, 
-        answer,
-        fromSocketId: socket.id 
-    });
+    socket.emit("call-accepted", { toSocketId: currentCallTargetSocketId, answer });
 }
 
 function rejectCall() {
@@ -373,13 +349,8 @@ function rejectCall() {
     socket.emit("end-call", { toSocketId: currentCallTargetSocketId });
 }
 
-socket.on("call-accepted", async ({ answer, fromSocketId }) => {
-    if (fromSocketId) {
-        currentCallTargetSocketId = fromSocketId;
-    }
-    if (peer) {
-        await peer.setRemoteDescription(new RTCSessionDescription(answer));
-    }
+socket.on("call-accepted", async ({ answer }) => {
+    if (peer) await peer.setRemoteDescription(new RTCSessionDescription(answer));
 });
 
 socket.on("ice-candidate", async ({ candidate }) => {
