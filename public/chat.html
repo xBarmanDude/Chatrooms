@@ -387,30 +387,35 @@ socket.on("call-target-id", ({ targetSocketId }) => {
 
 function createPeer() {
     const pc = new RTCPeerConnection({
+        // >>> THE CHROMIUM PRIVACY PASS FIX <<<
+        // This forces Chrome and mobile engines to bundle media channels and 
+        // rely on your STUN/TURN server configurations, completely ignoring the broken .local IPs
+        iceTransportPolicy: "all", 
+        bundlePolicy: "max-bundle", 
+        rtcpMuxPolicy: "require",
         iceServers: [
-  { urls: "stun:stun.relay.metered.ca:80" },
-
-  {
-    urls: "turn:global.relay.metered.ca:80",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  },
-  {
-    urls: "turn:global.relay.metered.ca:80?transport=tcp",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  },
-  {
-    urls: "turn:global.relay.metered.ca:443",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  },
-  {
-    urls: "turns:global.relay.metered.ca:443?transport=tcp",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  }
-]
+            { urls: "stun:stun.relay.metered.ca:80" },
+            {
+                urls: "turn:global.relay.metered.ca:80",
+                username: "701acf6c481f2350081869a7",
+                credential: "ASPxdqlRB2ze3o/g"
+            },
+            {
+                urls: "turn:global.relay.metered.ca:80?transport=tcp",
+                username: "701acf6c481f2350081869a7",
+                credential: "ASPxdqlRB2ze3o/g"
+            },
+            {
+                urls: "turn:global.relay.metered.ca:443",
+                username: "701acf6c481f2350081869a7",
+                credential: "ASPxdqlRB2ze3o/g"
+            },
+            {
+                urls: "turns:global.relay.metered.ca:443?transport=tcp",
+                username: "701acf6c481f2350081869a7",
+                credential: "ASPxdqlRB2ze3o/g"
+            }
+        ]
     });
 
     // 👇 ADD THIS (STEP 1 DEBUG ONLY)
