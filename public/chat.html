@@ -421,23 +421,30 @@ function createPeer() {
 });
 
     pc.ontrack = (event) => {
-        console.log("TRACK RECEIVED FROM REMOTE:", event.streams);
-        const video = document.getElementById("remoteVideo");
+    console.log("TRACK RECEIVED FROM REMOTE:", event.streams);
+    const video = document.getElementById("remoteVideo");
+    
+    // 1. Assign the stream data link
+    video.srcObject = event.streams[0];
+    
+    // 2. WAIT until the browser has actually parsed the incoming mobile stream configuration
+    video.onloadedmetadata = () => {
+        console.log("Stream metadata loaded! Attempting safe playback...");
         
-        // Ensure the video element gets the stream
-        if (video.srcObject !== event.streams[0]) {
-            video.srcObject = event.streams[0];
-        }
-        
-        // FORCE the laptop browser to play the incoming mobile stream
-        video.play().catch((err) => {
-            console.log("Laptop auto-play blocked or delayed, retrying...", err);
-            // Fallback: clear and re-assign to kickstart the stream
-            setTimeout(() => {
-                video.srcObject = event.streams[0];
-                video.play().catch(e => console.error("Playback permanently blocked:", e));
-            }, 500);
-        });
+        // 3. Play it only when it is structurally ready
+        video.play()
+            .then(() => {
+                console.log("Playback started beautifully!");
+            })
+            .catch((err) => {
+                console.warn("Autoplay blocked. Applying muted fallback strategy...", err);
+                // 4. Secure fallback: if the security engine complains, mute it, play it, then unmute it
+                video.muted = true;
+                video.play().then(() => {
+                    setTimeout(() => { video.muted = false; }, 150);
+                }).catch(e => console.error("Permanent media block:", e));
+            });
+    };
     };
 
     pc.onicecandidate = (event) => {
