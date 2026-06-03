@@ -303,23 +303,29 @@ async function startCall() {
     await openCamera();
     if (!localStream) return;
 
+    // 1. Tell the server we want to initiate a call right now
+    // We will let the server return the target socket ID before we create the peer structural descriptions
+    const targetPayload = {
+        to: dmTarget,
+        from: username,
+        fromSocketId: socket.id
+    };
+
+    // 2. Initialize the peer structures safely
     peer = createPeer();
 
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
 
-    // >>> THE FIX: Force the phone to find the laptop's ID immediately <<<
-    // Your backend maps users via userSocketMap, let's make sure the frontend sets it up right away
+    // 3. Complete the emit pairing
     socket.emit("call-user", {
-        to: dmTarget,
-        from: username,
-        offer,
-        fromSocketId: socket.id
+        ...targetPayload,
+        offer
     });
 }
 
 socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
-    currentCallTargetSocketId = fromSocketId;
+    currentCallTargetSocketId = fromSocketId; // Lock this in immediately!
     window.pendingOffer = offer;
     document.getElementById("callText").innerText = "📞 Incoming call from " + from;
     document.getElementById("callPopup").style.display = "flex";
