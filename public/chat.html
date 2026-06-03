@@ -421,10 +421,24 @@ function createPeer() {
 });
 
     pc.ontrack = (event) => {
-    const video = document.getElementById("remoteVideo");
-    video.srcObject = event.streams[0];
-    video.play().catch(() => {});
-};
+        console.log("TRACK RECEIVED FROM REMOTE:", event.streams);
+        const video = document.getElementById("remoteVideo");
+        
+        // Ensure the video element gets the stream
+        if (video.srcObject !== event.streams[0]) {
+            video.srcObject = event.streams[0];
+        }
+        
+        // FORCE the laptop browser to play the incoming mobile stream
+        video.play().catch((err) => {
+            console.log("Laptop auto-play blocked or delayed, retrying...", err);
+            // Fallback: clear and re-assign to kickstart the stream
+            setTimeout(() => {
+                video.srcObject = event.streams[0];
+                video.play().catch(e => console.error("Playback permanently blocked:", e));
+            }, 500);
+        });
+    };
 
     pc.onicecandidate = (event) => {
     console.log("ICE GENERATED:", event.candidate);
