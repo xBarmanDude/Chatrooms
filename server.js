@@ -198,17 +198,12 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     // ── CALL SIGNALING (all routed by socket ID) ──
     socket.on("call-user", ({ to, from, offer }) => {
     const targetId = userSocketMap.get(to);
+    if (!targetId) { console.log("CALL FAILED: user not found ->", to); return; }
 
-    if (!targetId) {
-        console.log("CALL FAILED: user not found ->", to);
-        return;
-    }
+    // ADD THIS LINE:
+    socket.emit("call-target-id", { targetSocketId: targetId });
 
-    io.to(targetId).emit("incoming-call", {
-        from,
-        offer,
-        fromSocketId: socket.id
-    });
+    io.to(targetId).emit("incoming-call", { from, offer, fromSocketId: socket.id });
 });
 
     socket.on("call-accepted", ({ toSocketId, answer }) => {

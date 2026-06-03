@@ -372,6 +372,10 @@ socket.on("ice-candidate", async ({ candidate }) => {
 
 socket.on("call-ended", () => cleanupCall());
 
+socket.on("call-target-id", ({ targetSocketId }) => {
+    currentCallTargetSocketId = targetSocketId;
+});
+
 function createPeer() {
     const pc = new RTCPeerConnection({
         iceServers: [
