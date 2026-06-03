@@ -334,30 +334,25 @@ socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
 async function acceptCall() {
     document.getElementById("callPopup").style.display = "none";
     
-    if (peer) {
-        peer.close();
-        peer = null;
+    // 1. PRE-WARM THE VIDEO ELEMENT USING THIS CLICK EVENT
+    const video = document.getElementById("remoteVideo");
+    if (video) {
+        video.muted = true; // Temporary mute to bypass initial autoplay blocks
+        video.play().catch(() => { /* Squelch empty element errors */ });
     }
 
+    if (peer) { peer.close(); peer = null; }
+    pendingCandidates = [];
     await openCamera();
     if (!localStream) return;
-
-    // Build peer instance first
     peer = createPeer();
     
-    // Process handshaking connection
     await peer.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
     
-    // Flush out elements safely cached during popup window alerts
-    console.log(`Flushing ${pendingCandidates.length} cached candidates.`);
     for (const c of pendingCandidates) {
-        try {
-            await peer.addIceCandidate(c);
-        } catch(e) {
-            console.error("Error processing candidate execution loop:", e);
-        }
+        await peer.addIceCandidate(c);
     }
-    pendingCandidates = []; 
+    pendingCandidates = [];
     
     const answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
@@ -449,37 +444,35 @@ let isProcessingTrack = false;
 
 pc.ontrack = (event) => {
     console.log("TRACK RECEIVED FROM REMOTE:", event.streams);
+    
+    const remoteStream = event.streams[0];
+    if (!remoteStream) return;
+
     const video = document.getElementById("remoteVideo");
     
-    // 1. Synchronously block the second track event if it fires back-to-back
-    if (isProcessingTrack) {
-        console.log("Throttling duplicate track assignment.");
+    // Strict ID check to avoid re-assigning on the audio track hit
+    if (video.srcObject && video.srcObject.id === remoteStream.id) {
+        console.log("Stream already coupled. Dropping duplicate track event.");
         return;
     }
     
-    isProcessingTrack = true;
+    // Assign the incoming stream
+    video.srcObject = remoteStream;
     
-    // 2. Assign the source track safely
-    video.srcObject = event.streams[0];
-    
+    // Chrome now treats this play request as a continuation of the user interaction
     video.play()
         .then(() => {
             console.log("Direct playback successful!");
+            // Unmute the track after a tiny delay so the hardware can unmute cleanly
+            setTimeout(() => { video.muted = false; }, 100);
         })
         .catch((err) => {
-            console.log("Autoplay flagged. Applying stable hardware bypass...");
+            console.log("Fallback bypass triggered:", err);
             video.muted = true;
-            video.play()
-                .then(() => {
-                    setTimeout(() => { video.muted = false; }, 200);
-                })
-                .catch(e => console.error("Hardware engine rejected track:", e));
+            video.play().then(() => {
+                setTimeout(() => { video.muted = false; }, 100);
+            });
         });
-
-    // 3. Release the lock shortly after the hardware has initialized the window
-    setTimeout(() => {
-        isProcessingTrack = false;
-    }, 50);
 };
 
     pc.onicecandidate = (event) => {
