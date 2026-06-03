@@ -503,31 +503,8 @@ async function openCamera() {
 }
 
 function endCall() {
-    // 1. Close and clean up the peer connection
-    if (peer) {
-        peer.close();
-        peer = null;
-    }
-
-    // 2. Clear out the video element completely
-    const video = document.getElementById("remoteVideo");
-    if (video) {
-        video.pause();                    // Force the hardware engine to stop playing
-        video.srcObject = null;           // Sever the stream link
-        video.removeAttribute('src');     // Clean out any lingering fallback paths
-        video.load();                     // Force Chrome to reset its internal multimedia state machine
-        video.dataset.activeStreamId = ""; // Release the global stream ID lock
-    }
-
-    // 3. Close local tracks if necessary
-    if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-    }
-
-    // Hide call UI elements
-    document.getElementById("callInterface").style.display = "none"; 
-    console.log("Call completely torn down. Hardware engine clean reset.");
+    socket.emit("end-call", { toSocketId: currentCallTargetSocketId });
+    cleanupCall();
 }
 
 function cleanupCall() {
