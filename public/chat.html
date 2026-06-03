@@ -305,12 +305,7 @@ async function startCall() {
 
     peer = createPeer();
 
-    const offerOptions = {
-        offerToReceiveAudio: 1,
-        offerToReceiveVideo: 1
-    };
-
-    const offer = await peer.createOffer(offerOptions);
+    const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
 
     // >>> THE FIX: Force the phone to find the laptop's ID immediately <<<
@@ -346,15 +341,8 @@ for (const c of pendingCandidates) {
     await peer.addIceCandidate(c);
 }
 pendingCandidates = [];
-
-    const answerOptions = {
-        offerToReceiveAudio: 1,
-        offerToReceiveVideo: 1
-    };
-
-    const answer = await peer.createAnswer(answerOptions);
+    const answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
-    
     socket.emit("call-accepted", { toSocketId: currentCallTargetSocketId, answer });
 }
 
