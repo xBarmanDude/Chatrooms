@@ -427,6 +427,9 @@ function createPeer() {
         ]
     });
 
+    // Local tracker specific to this peer connection context
+    let hasCoupledStream = false;
+
     pc.oniceconnectionstatechange = () => {
         console.log("ICE STATE:", pc.iceConnectionState);
     };
@@ -443,27 +446,36 @@ function createPeer() {
 
     pc.ontrack = (event) => {
         console.log("TRACK RECEIVED FROM REMOTE:", event.streams);
-        const video = document.getElementById("remoteVideo");
         
-        // FIX: If the stream is already set, do not reset it! 
-        // This stops the "interrupted by a new load request" loop crash.
-        if (video.srcObject && video.srcObject.id === event.streams[0].id) {
-            console.log("Stream track already coupled. Skipping extra render load.");
+        // STRICT INSTANT GUARD: If we have already initiated coupling for this peer,
+        // absolutely slam the door on rapid consecutive track events.
+        if (hasCoupledStream) {
+            console.log("Stream track already processing or coupled. Blocked extra render loop.");
             return;
         }
         
-        video.srcObject = event.streams[0];
+        const remoteStream = event.streams[0];
+        if (!remoteStream) return;
+
+        hasCoupledStream = true; // Lock it down synchronously BEFORE any async play promises trigger
+        
+        const video = document.getElementById("remoteVideo");
+        video.srcObject = remoteStream;
         
         video.play()
             .then(() => console.log("Direct playback successful!"))
             .catch((err) => {
-                console.log("Autoplay flagged. Applying stable hardware bypass...");
+                console.log("Autoplay flagged by Chrome. Initiating stable hardware bypass...");
                 video.muted = true;
                 video.play()
                     .then(() => {
+                        console.log("Bypass successful. Restoring audio tracks...");
                         setTimeout(() => { video.muted = false; }, 200);
                     })
-                    .catch(e => console.error("Hardware engine rejected track:", e));
+                    .catch(e => {
+                        console.error("Hardware engine rejected track completely:", e);
+                        hasCoupledStream = false; // Reset lock only on absolute failure
+                    });
             });
     };
 
