@@ -207,8 +207,8 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
 });
 
     socket.on("call-accepted", ({ toSocketId, answer }) => {
-        io.to(toSocketId).emit("call-accepted", { answer });
-    });
+    io.to(toSocketId).emit("call-accepted", { answer, fromSocketId: socket.id }); // <-- Added fromSocketId: socket.id
+});
 
     socket.on("ice-candidate", ({ toSocketId, candidate }) => {
         io.to(toSocketId).emit("ice-candidate", { candidate });

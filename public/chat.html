@@ -308,6 +308,8 @@ async function startCall() {
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
 
+    // >>> THE FIX: Force the phone to find the laptop's ID immediately <<<
+    // Your backend maps users via userSocketMap, let's make sure the frontend sets it up right away
     socket.emit("call-user", {
         to: dmTarget,
         from: username,
@@ -349,7 +351,8 @@ function rejectCall() {
     socket.emit("end-call", { toSocketId: currentCallTargetSocketId });
 }
 
-socket.on("call-accepted", async ({ answer }) => {
+socket.on("call-accepted", async ({ answer, fromSocketId }) => {
+    if (fromSocketId) currentCallTargetSocketId = fromSocketId; // <-- Save it!
     if (peer) await peer.setRemoteDescription(new RTCSessionDescription(answer));
 });
 
