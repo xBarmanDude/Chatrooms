@@ -218,8 +218,14 @@ function renderMessage(name, msg, isMe, time, id) {
                 <div class="msgActions themActions">${copyBtn}</div>
             </div>`;
     }
-    document.getElementById("chat").appendChild(div);
-    document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
+    const chat = document.getElementById("chat");
+const isAtBottom = chat.scrollHeight - chat.scrollTop <= chat.clientHeight + 100;
+
+chat.appendChild(div);
+
+if (isAtBottom || isMe) {
+    chat.scrollTop = chat.scrollHeight;
+}
 }
 
 function deleteMessage(id, btn) {
@@ -289,17 +295,20 @@ function startJitsiCall() {
     );
 }
 
+let typingTimeout;
+
 socket.on("userTyping", (data) => {
-    const header = document.getElementById("chatHeader");
-    const originalText = header.innerText; // Remember "💌 Username"
-    
-    // Only show if we are actually in the DM with that person
     if (isDM && dmTarget === data.from) {
-        header.innerText = "Typing...";
+        const header = document.getElementById("chatHeader");
+        const originalText = header.innerText;
         
-        // Change it back to the name after 2 seconds
-        setTimeout(() => { 
-            header.innerText = originalText; 
+        if (header.innerText !== "Typing...") {
+            header.innerText = "Typing...";
+        }
+        
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => { 
+            header.innerText = "💌 " + dmTarget; // Restore the name explicitly
         }, 2000);
     }
 });
