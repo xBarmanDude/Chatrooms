@@ -91,6 +91,11 @@ app.get("/users", async (req, res) => {
 });
 
 app.post("/upload", upload.single("image"), async (req, res) => {
+    // SECURITY FIX: Prevent server crash if no file is sent
+    if (!req.file) {
+        return res.status(400).json({ success: false, error: "No file uploaded" });
+    }
+
     try {
         const result = await new Promise((resolve, reject) => {
             cloudinary.uploader.upload_stream(
@@ -197,18 +202,19 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
 
     // ── CALL SIGNALING (all routed by socket ID) ──
     socket.on("call-user", ({ to, from, offer }) => {
-    const targetId = userSocketMap.get(to);
-    if (!targetId) { console.log("CALL FAILED: user not found ->", to); return; }
+        const targetId = userSocketMap.get(to);
+        if (!targetId) { console.log("CALL FAILED: user not found ->", to); return; }
 
-    // ADD THIS LINE:
-    socket.emit("call-target-id", { targetSocketId: targetId });
+        // Send confirmation back to the caller immediately along the same execution thread
+        socket.emit("call-target-id", { targetSocketId: targetId });
 
-    io.to(targetId).emit("incoming-call", { from, offer, fromSocketId: socket.id });
-});
+        // Forward the offer to the receiving device, including the caller's true socket ID
+        io.to(targetId).emit("incoming-call", { from, offer, fromSocketId: socket.id });
+    });
 
     socket.on("call-accepted", ({ toSocketId, answer }) => {
-        io.to(toSocketId).emit("call-accepted", { answer });
-    });
+    io.to(toSocketId).emit("call-accepted", { answer, fromSocketId: socket.id }); // <-- Added fromSocketId: socket.id
+});
 
     socket.on("ice-candidate", ({ toSocketId, candidate }) => {
         io.to(toSocketId).emit("ice-candidate", { candidate });
@@ -219,16 +225,19 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("disconnect", async () => {
-    const username = onlineUsers.get(socket.id);
+        const username = onlineUsers.get(socket.id);
 
-    if (username) {
-        userSocketMap.delete(username);
-        onlineUsers.delete(socket.id);
-        await User.updateOne({ username }, { lastSeen: new Date() });
-    }
+        if (username) {
+            // FIX: Only delete the user if the disconnecting tab is their active primary socket
+            if (userSocketMap.get(username) === socket.id) {
+                userSocketMap.delete(username);
+                await User.updateOne({ username }, { lastSeen: new Date() });
+            }
+            onlineUsers.delete(socket.id);
+        }
 
-    io.emit("onlineUsers", Array.from(userSocketMap.keys()));
-});
+        io.emit("onlineUsers", Array.from(userSocketMap.keys()));
+    });
 });
 
 server.listen(process.env.PORT || 3000, () => {

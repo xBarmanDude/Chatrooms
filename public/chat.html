@@ -7,7 +7,6 @@
 <body>
 <div id="appContainer">
 
-    <!-- SIDEBAR -->
     <div id="sidebar">
         <div id="sidebarHeader">💬 Chat Rooms</div>
         <div class="sidebarItem active" onclick="switchToGeneral()">🌐 General</div>
@@ -16,7 +15,6 @@
         <div id="logoutBtn" onclick="window.location.href='/logout'">🚪 Logout</div>
     </div>
 
-    <!-- MAIN -->
     <div id="main">
         <div id="chatHeader">🌐 General</div>
         <div id="chat"></div>
@@ -30,7 +28,6 @@
     </div>
 </div>
 
-<!-- INCOMING CALL POPUP -->
 <div id="callPopup">
     <div id="callText">Incoming call...</div>
     <div id="callPopupBtns">
@@ -39,8 +36,7 @@
     </div>
 </div>
 
-<!-- CALL UI -->
-<div id="callUI">
+<div id="callUI" style="display: none;">
     <div id="callUIHeader">
         <span id="callUILabel">📹 In Call</span>
         <button class="endCallBtn" onclick="endCall()">End Call</button>
@@ -257,11 +253,7 @@ function sendMessage() {
     if (!input.value.trim()) return;
     insertDateDivider(getDateLabel(new Date()));
     renderMessage(username, input.value, true);
-    if (isDM) socket.emit("dm", {
-    from: username,
-    to: dmTarget,
-    msg: input.value
-});
+    if (isDM) socket.emit("dm", { from: username, to: dmTarget, msg: input.value });
     else socket.emit("message", { name: username, msg: input.value, room: currentRoom });
     input.value = "";
 }
@@ -292,28 +284,23 @@ async function startCall() {
         alert("Open a DM first to call");
         return;
     }
-
-    if (peer) {
-        peer.close();
-        peer = null;
-    }
-
+    if (peer) { peer.close(); peer = null; }
     pendingCandidates = [];
 
+    // Force call container layer to paint layout geometries immediately
+    document.getElementById("callUI").style.display = "flex";
+
     await openCamera();
-    if (!localStream) return;
+    if (!localStream) {
+        document.getElementById("callUI").style.display = "none";
+        return;
+    }
 
+    const targetPayload = { to: dmTarget, from: username, fromSocketId: socket.id };
     peer = createPeer();
-
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
-
-    socket.emit("call-user", {
-        to: dmTarget,
-        from: username,
-        offer,
-        fromSocketId: socket.id
-    });
+    socket.emit("call-user", { ...targetPayload, offer });
 }
 
 socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
@@ -325,20 +312,27 @@ socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
 
 async function acceptCall() {
     document.getElementById("callPopup").style.display = "none";
-    if (peer) {
-    peer.close();
-    peer = null;
-}
-pendingCandidates = [];
+    
+    // Force target window visibility prior to attaching device interfaces
+    document.getElementById("callUI").style.display = "flex";
+
+    if (peer) { peer.close(); peer = null; }
+    pendingCandidates = [];
+    
     await openCamera();
-    if (!localStream) return;
+    if (!localStream) {
+        document.getElementById("callUI").style.display = "none";
+        return;
+    }
+    
     peer = createPeer();
     await peer.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
-    // flush queued ICE candidates
-for (const c of pendingCandidates) {
-    await peer.addIceCandidate(c);
-}
-pendingCandidates = [];
+    
+    for (const c of pendingCandidates) {
+        await peer.addIceCandidate(c).catch(e => {});
+    }
+    pendingCandidates = [];
+    
     const answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
     socket.emit("call-accepted", { toSocketId: currentCallTargetSocketId, answer });
@@ -349,21 +343,19 @@ function rejectCall() {
     socket.emit("end-call", { toSocketId: currentCallTargetSocketId });
 }
 
-socket.on("call-accepted", async ({ answer }) => {
+socket.on("call-accepted", async ({ answer, fromSocketId }) => {
+    if (fromSocketId) currentCallTargetSocketId = fromSocketId;
     if (peer) await peer.setRemoteDescription(new RTCSessionDescription(answer));
 });
 
 socket.on("ice-candidate", async ({ candidate }) => {
     try {
         if (!peer || !candidate) return;
-
         const ice = new RTCIceCandidate(candidate);
-
         if (!peer.remoteDescription) {
             pendingCandidates.push(ice);
             return;
         }
-
         await peer.addIceCandidate(ice);
     } catch (e) {
         console.log("ICE error:", e);
@@ -377,61 +369,69 @@ socket.on("call-target-id", ({ targetSocketId }) => {
 });
 
 function createPeer() {
-    const pc = new RTCPeerConnection({
-        iceServers: [
-  { urls: "stun:stun.relay.metered.ca:80" },
+    const peerConfiguration = {
+  iceServers: [
+    {
+      urls: "stun:openrelay.metered.ca:80"
+    },
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "701acf6c481f2350081869a7",
+      credential: "ASPxdqlRB2ze3o/g"
+    },
+    // Add these explicit TCP and TLS fallbacks:
+    {
+      urls: "turn:openrelay.metered.ca:443?transport=tcp",
+      username: "701acf6c481f2350081869a7",
+      credential: "ASPxdqlRB2ze3o/g"
+    },
+    {
+      urls: "turns:openrelay.metered.ca:443?transport=tcp",
+      username: "701acf6c481f2350081869a7",
+      credential: "ASPxdqlRB2ze3o/g"
+    }
+  ],
+  iceTransportPolicy: "relay" // Force TURN during your testing phases
+};
 
-  {
-    urls: "turn:global.relay.metered.ca:80",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  },
-  {
-    urls: "turn:global.relay.metered.ca:80?transport=tcp",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  },
-  {
-    urls: "turn:global.relay.metered.ca:443",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  },
-  {
-    urls: "turns:global.relay.metered.ca:443?transport=tcp",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  }
-]
-    });
 
-    // 👇 ADD THIS (STEP 1 DEBUG ONLY)
+    // AUTO-CLEANUP FIX: Detect if the internet drops and end the call cleanly
     pc.oniceconnectionstatechange = () => {
         console.log("ICE STATE:", pc.iceConnectionState);
+        if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
+            alert("Connection lost. Ending call.");
+            cleanupCall();
+        }
     };
 
-    pc.onconnectionstatechange = () => {
-        console.log("PC STATE:", pc.connectionState);
-    };
+    if (localStream) {
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    }
 
-    localStream.getTracks().forEach(track => {
-    pc.addTrack(track, localStream);
-});
-
+    // SIMPLIFIED VIDEO FIX: Direct assignment prevents race conditions
     pc.ontrack = (event) => {
-    const video = document.getElementById("remoteVideo");
-    video.srcObject = event.streams[0];
-    video.play().catch(() => {});
-};
+        console.log("TRACK RECEIVED:", event.track.kind);
+        const video = document.getElementById("remoteVideo");
+        
+        // Prevent re-assigning if it's the exact same stream
+        if (video.srcObject !== event.streams[0]) {
+            video.srcObject = event.streams[0];
+            video.play().catch(e => {
+                console.log("Autoplay blocked, unmuting required:", e);
+                video.muted = true;
+                video.play();
+            });
+        }
+    };
 
     pc.onicecandidate = (event) => {
-    console.log("ICE GENERATED:", event.candidate);
-    if (event.candidate) {
-        socket.emit("ice-candidate", {
-            toSocketId: currentCallTargetSocketId,
-            candidate: event.candidate
-        });
-    }
-};
+        if (event.candidate) {
+            socket.emit("ice-candidate", {
+                toSocketId: currentCallTargetSocketId,
+                candidate: event.candidate
+            });
+        }
+    };
 
     return pc;
 }
@@ -440,7 +440,6 @@ async function openCamera() {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         document.getElementById("localVideo").srcObject = localStream;
-        document.getElementById("callUI").style.display = "flex";
     } catch (err) {
         alert("Camera/mic access failed — make sure you're on HTTPS and permissions are allowed");
         console.log(err);
@@ -455,8 +454,13 @@ function endCall() {
 function cleanupCall() {
     if (peer) { peer.close(); peer = null; }
     if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-    document.getElementById("localVideo").srcObject = null;
-    document.getElementById("remoteVideo").srcObject = null;
+    
+    const localVid = document.getElementById("localVideo");
+    const remoteVid = document.getElementById("remoteVideo");
+    
+    if (localVid) { localVid.pause(); localVid.srcObject = null; }
+    if (remoteVid) { remoteVid.pause(); remoteVid.srcObject = null; }
+    
     document.getElementById("callUI").style.display = "none";
     currentCallTargetSocketId = "";
 }
