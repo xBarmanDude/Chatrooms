@@ -45,7 +45,7 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
+<script src="https://meet.jit.si/external_api.js"></script>
 <script>
 const socket = io();
 let username = "";
@@ -58,10 +58,9 @@ let onlineUsers = [];
 let lastSeenData = {};
 let pendingCandidates = [];
 
-// ── DAILY CALL STATE ──
-let callFrame = null; 
+// ── JITSI CALL STATE ──
+let jitsiAPI = null; 
 let currentCallTargetSocketId = "";
-const DAILY_ROOM_URL = "https://xbarmandude.daily.co/bkB77GaIBBqaEKQebxGq";
 
 fetch("/session")
     .then(r => r.json())
@@ -276,7 +275,35 @@ document.getElementById("imageInput").addEventListener("change", async function 
     this.value = "";
 });
 
-// ── NEW INDESTRUCTIBLE CALL SYSTEM (DAILY.CO) ──
+// ── FREE JITSI MEET CALL CORE ──
+
+function initJitsiCall(roomName) {
+    document.getElementById("videoContainer").innerHTML = ""; // Clear container
+    
+    const domain = "meet.jit.si";
+    const options = {
+        roomName: roomName,
+        width: "100%",
+        height: 180,
+        parentNode: document.getElementById("videoContainer"),
+        configOverwrite: {
+            startWithAudioMuted: false,
+            startWithVideoMuted: false,
+            prejoinPageEnabled: false // Skip annoying settings page, join immediately
+        },
+        interfaceConfigOverwrite: {
+            TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup'], // Keep it compact and clean
+            VIDEO_LAYOUT_FIT: true
+        }
+    };
+    
+    jitsiAPI = new JitsiMeetExternalAPI(domain, options);
+    
+    // Wire up container widget close when hangup clicked inside Jitsi interface
+    jitsiAPI.addEventListener('videoConferenceLeft', () => {
+        cleanupCall();
+    });
+}
 
 async function startCall() {
     if (!isDM || !dmTarget) {
@@ -284,36 +311,25 @@ async function startCall() {
         return;
     }
 
-    // 1. Show your existing call UI widget box on the screen
     document.getElementById("callUI").style.display = "flex";
 
-    // 2. Insert the Daily video player directly inside your layout container
-    if (!callFrame) {
-        callFrame = window.DailyIframe.createFrame(document.getElementById("videoContainer"), {
-            iframeStyle: {
-                width: '100%',
-                height: '160px',
-                border: '0',
-                borderRadius: '10px'
-            }
-        });
-        callFrame.on('left-meeting', cleanupCall);
-    }
+    // Generate a unique, unguessable room string for this DM session
+    const secureRoomName = "room_" + [username, dmTarget].sort().join("_") + "_" + Math.floor(Math.random() * 10000);
 
-    // 3. Jump into the room
-    await callFrame.join({ url: DAILY_ROOM_URL });
+    initJitsiCall(secureRoomName);
 
-    // 4. Send a network signal to trigger the other person's popup window
+    // Send the room ID to the target user via socket connection
     socket.emit("call-user", {
         to: dmTarget,
         from: username,
-        offer: DAILY_ROOM_URL, 
+        offer: secureRoomName, 
         fromSocketId: socket.id
     });
 }
 
 socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
     currentCallTargetSocketId = fromSocketId;
+    window.pendingJitsiRoom = offer; // Store room name temporary
     document.getElementById("callText").innerText = "📞 Incoming call from " + from;
     document.getElementById("callPopup").style.display = "flex";
 });
@@ -322,21 +338,9 @@ async function acceptCall() {
     document.getElementById("callPopup").style.display = "none";
     document.getElementById("callUI").style.display = "flex";
 
-    // Insert the Daily video screen into the receiver's container box
-    if (!callFrame) {
-        callFrame = window.DailyIframe.createFrame(document.getElementById("videoContainer"), {
-            iframeStyle: {
-                width: '100%',
-                height: '160px',
-                border: '0',
-                borderRadius: '10px'
-            }
-        });
-        callFrame.on('left-meeting', cleanupCall);
-    }
-
-    // Join the room link instantly
-    await callFrame.join({ url: DAILY_ROOM_URL });
+    // Launch into the caller's room name
+    initJitsiCall(window.pendingJitsiRoom);
+    
     socket.emit("call-accepted", { toSocketId: currentCallTargetSocketId, answer: "accepted" });
 }
 
@@ -345,14 +349,13 @@ function rejectCall() {
     socket.emit("end-call", { toSocketId: currentCallTargetSocketId });
 }
 
-socket.on("call-accepted", async ({ answer }) => {
-    console.log("Call connected securely via Daily cloud server room!");
+socket.on("call-accepted", ({ answer }) => {
+    console.log("Jitsi call connection approved!");
 });
 
-// Cleaned up old unused network listeners
-socket.on("ice-candidate", async ({ candidate }) => {});
 socket.on("call-ended", () => cleanupCall());
 socket.on("call-target-id", ({ targetSocketId }) => { currentCallTargetSocketId = targetSocketId; });
+socket.on("ice-candidate", () => {}); // Handlers ignored now since Jitsi maps network natively
 
 function endCall() {
     socket.emit("end-call", { toSocketId: currentCallTargetSocketId });
@@ -360,11 +363,11 @@ function endCall() {
 }
 
 function cleanupCall() {
-    if (callFrame) {
-        callFrame.leave();
-        callFrame.destroy();
-        callFrame = null;
+    if (jitsiAPI) {
+        jitsiAPI.dispose();
+        jitsiAPI = null;
     }
+    document.getElementById("videoContainer").innerHTML = "";
     document.getElementById("callUI").style.display = "none";
     currentCallTargetSocketId = "";
 }
