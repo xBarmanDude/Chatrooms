@@ -251,12 +251,28 @@ function renderMessage(name, msg, isMe, time, id) {
         const rawName = msg.split('/').pop();
         const fileName = rawName.substring(rawName.indexOf('_') + 1); 
         
-        // Dynamic icon based on extension
-        const icon = isPdf ? "📕" : "📄";
+        // Premium vector icons instead of emojis
+        const pdfIcon = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>`;
+
+        const genericIcon = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>`;
+
+        const chosenIcon = isPdf ? pdfIcon : genericIcon;
         
         mediaContent = `
             <a href="${msg}" target="_blank" class="doc-card">
-                <div class="doc-icon-frame">${icon}</div>
+                <div class="doc-icon-frame">${chosenIcon}</div>
                 <div class="doc-meta">
                     <div class="doc-name">${fileName}</div>
                     <div class="doc-desc">Click to view/download</div>
