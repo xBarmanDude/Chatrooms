@@ -247,9 +247,10 @@ function renderMessage(name, msg, isMe, time, id) {
         mediaContent = `<video controls style="max-width:280px;border-radius:12px;display:block;margin-top:4px;"><source src="${msg}"></video>`;
         bubbleClass = "msg msg-media-wrapper"; 
     } else if (isDoc) {
-        // Extract filename out of the Cloudinary URL
+        // Extract filename and safely decode URL characters like %28 and %29
         const rawName = msg.split('/').pop();
-        const fileName = rawName.substring(rawName.indexOf('_') + 1); 
+        const cleanNameString = rawName.substring(rawName.indexOf('_') + 1);
+        const fileName = decodeURIComponent(cleanNameString); 
         
         // Premium vector icons instead of emojis
         const pdfIcon = `
