@@ -119,15 +119,15 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("joinRoom", async (room) => {
-    // If the room name provided is 'general', explicitly query for that
     const targetRoom = room || "general";
     socket.join(targetRoom);
     
-    // Fetch messages where room is explicitly 'general'
+    // Sort by -1 (descending) to get the LATEST, limit to 50, then reverse for display
     const messages = await Message.find({ room: targetRoom, isDM: false })
-                                  .sort({ time: -1 })
+                                  .sort({ time: -1 }) 
                                   .limit(50);
-    socket.emit("loadMessages", messages);
+                                  
+    socket.emit("loadMessages", messages.reverse()); 
 });
 
     socket.on("getLastSeen", async () => {
