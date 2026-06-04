@@ -7,7 +7,6 @@
 <body>
 <div id="appContainer">
 
-    <!-- SIDEBAR -->
     <div id="sidebar">
         <div id="sidebarHeader">💬 Chat Rooms</div>
         <div class="sidebarItem active" onclick="switchToGeneral()">🌐 General</div>
@@ -16,43 +15,20 @@
         <div id="logoutBtn" onclick="window.location.href='/logout'">🚪 Logout</div>
     </div>
 
-    <!-- MAIN -->
     <div id="main">
         <div id="chatHeader">🌐 General</div>
         <div id="chat"></div>
         <div id="inputBox">
             <input type="file" id="imageInput" accept="image/*,video/*" style="display:none">
-            <button class="attachBtn" onclick="document.getElementById('imageInput').click()">📎</button>
-            <input id="msg" placeholder="Type message..." onkeydown="if(event.key==='Enter') sendMessage()">
-            <button class="callBtn" onclick="startJitsiCall()" title="Start video call">📞</button>
+            <button class="attachBtn" onclick="document.getElementById('imageInput').click()" title="Attach file">📎</button>
+            <input id="msg" placeholder="Type message..." autocomplete="off" onkeydown="if(event.key==='Enter') sendMessage()">
+            <button class="callBtn" onclick="startJitsiCall()" title="Start Video Call">📞</button>
             <button class="sendBtn" onclick="sendMessage()">➤</button>
         </div>
     </div>
 </div>
 
-<!-- INCOMING CALL POPUP -->
-<div id="callPopup">
-    <div id="callText">Incoming call...</div>
-    <div id="callPopupBtns">
-        <button class="acceptBtn" onclick="acceptCall()">✅ Accept</button>
-        <button class="rejectBtn" onclick="rejectCall()">❌ Reject</button>
-    </div>
-</div>
-
-<!-- CALL UI -->
-<div id="callUI">
-    <div id="callUIHeader">
-        <span id="callUILabel">📹 In Call</span>
-        <button class="endCallBtn" onclick="endCall()">End Call</button>
-    </div>
-    <div id="videoContainer">
-        <video id="remoteVideo" autoplay playsinline></video>
-        <video id="localVideo" autoplay playsinline muted></video>
-    </div>
-</div>
-
 <script src="/socket.io/socket.io.js"></script>
-<script src="https://meet.jit.si/external_api.js"></script>
 <script>
 const socket = io();
 let username = "";
@@ -61,15 +37,10 @@ let isDM = false;
 let dmTarget = "";
 let lastDateLabel = "";
 let unreadCounts = {};
-let onlineUsers = [];
+let onlineUsersList = [];
 let lastSeenData = {};
-let pendingCandidates = [];
 
-// ── CALL STATE ──
-let peer = null;
-let localStream = null;
-let currentCallTargetSocketId = "";
-
+// ── SESSION & INIT ──
 fetch("/session")
     .then(r => r.json())
     .then(data => {
@@ -79,7 +50,7 @@ fetch("/session")
         loadUsers();
     });
 
-// ── USERS ──
+// ── USERS & SIDEBAR ──
 function loadUsers() {
     fetch("/users")
         .then(r => r.json())
@@ -90,12 +61,15 @@ function loadUsers() {
                 const div = document.createElement("div");
                 div.classList.add("sidebarItem");
                 div.id = "dm-" + u.username;
-                const isOnline = onlineUsers.includes(u.username);
+                
+                const isOnline = onlineUsersList.includes(u.username);
                 let statusText = isOnline ? "Online" : "Offline";
+                
                 if (!isOnline && lastSeenData[u.username]) {
                     const mins = Math.floor((Date.now() - new Date(lastSeenData[u.username]).getTime()) / 60000);
                     statusText = mins < 1 ? "Last seen just now" : mins === 1 ? "Last seen 1 min ago" : `Last seen ${mins} mins ago`;
                 }
+                
                 div.innerHTML = `
                     <div>
                         <div>${isOnline ? "🟢" : "⚫"} ${u.username}</div>
@@ -110,7 +84,7 @@ function loadUsers() {
 }
 
 socket.on("onlineUsers", (users) => {
-    onlineUsers = users;
+    onlineUsersList = users;
     socket.emit("getLastSeen");
     loadUsers();
 });
@@ -141,9 +115,11 @@ function openDM(target, el) {
     document.getElementById("chatHeader").innerText = "💌 " + target;
     document.querySelectorAll(".sidebarItem").forEach(i => i.classList.remove("active"));
     el.classList.add("active");
+    
     unreadCounts[target] = 0;
     const badge = document.getElementById("badge-" + target);
     if (badge) badge.style.display = "none";
+    
     socket.emit("joinDM", { from: username, to: target });
 }
 
@@ -155,7 +131,7 @@ function getDateLabel(dateStr) {
     yesterday.setDate(today.getDate() - 1);
     if (d.toDateString() === today.toDateString()) return "Today";
     if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
-    return d.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+    return d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
 }
 
 function insertDateDivider(dateLabel) {
@@ -179,29 +155,19 @@ socket.on("loadMessages", (messages) => {
 });
 
 socket.on("message", (data) => {
-    console.log("MESSAGE RECEIVED:", data);
-
-    // 1. IGNORE SELF MESSAGES
-    if (data.senderId === socket.id) return;
-
-    // 2. GENERAL CHAT FILTER
-    if (!data.isDM) {
-        if (currentRoom !== "general") return;
-
+    // General Chat Filter
+    if (!data.isDM && currentRoom === "general") {
         insertDateDivider(getDateLabel(new Date()));
-        renderMessage(data.name, data.msg, false);
+        renderMessage(data.name, data.msg, data.name === username, null, data._id);
         return;
     }
 
-    // 3. DM FILTER
-    if (data.isDM) {
-        if (!isDM) return;
-
-        // ONLY SHOW IF THIS DM MATCHES CURRENT CHAT
-        if (dmTarget !== data.name && dmTarget !== data.to) return;
-
-        insertDateDivider(getDateLabel(new Date()));
-        renderMessage(data.name, data.msg, false);
+    // DM Filter
+    if (data.isDM && isDM) {
+        if (dmTarget === data.name || dmTarget === data.to) {
+            insertDateDivider(getDateLabel(new Date()));
+            renderMessage(data.name, data.msg, data.name === username, null, data._id);
+        }
     }
 });
 
@@ -213,8 +179,8 @@ function renderMessage(name, msg, isMe, time, id) {
     const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/");
     const isVideo = msg.includes("cloudinary.com") && msg.includes("/video/upload/");
 
-    const deleteBtn = isMe ? `<button class="deleteBtn" onclick="deleteMessage('${id}', this)">🗑️</button>` : "";
-    const copyBtn = !isImage && !isVideo ? `<button class="copyBtn" onclick="copyMessage(this)">📋</button>` : "";
+    const deleteBtn = isMe ? `<button class="deleteBtn" onclick="deleteMessage('${id}', this)" title="Delete">🗑️</button>` : "";
+    const copyBtn = !isImage && !isVideo ? `<button class="copyBtn" onclick="copyMessage(this)" title="Copy">📋</button>` : "";
 
     const mediaContent = isImage
         ? `<img src="${msg}" style="max-width:280px;border-radius:12px;display:block;">`
@@ -250,6 +216,7 @@ function renderMessage(name, msg, isMe, time, id) {
 }
 
 function deleteMessage(id, btn) {
+    if (!id) return;
     btn.closest(".messageWrapper").remove();
     socket.emit("deleteMessage", { id });
 }
@@ -266,36 +233,15 @@ socket.on("messageDeleted", (data) => {
 
 function sendMessage() {
     const input = document.getElementById("msg");
-    if (!input.value.trim()) return;
-    insertDateDivider(getDateLabel(new Date()));
-    renderMessage(username, input.value, true);
+    const text = input.value.trim();
+    if (!text) return;
+
     if (isDM) {
-    console.log("SENDING DM", {
-        from: username,
-        to: dmTarget,
-        msg: input.value
-    });
-
-    socket.emit("dm", {
-        from: username,
-        to: dmTarget,
-        msg: input.value
-    });
-}
-else {
-    console.log("SENDING GENERAL", {
-        name: username,
-        msg: input.value,
-        room: currentRoom
-    });
-
-    socket.emit("message", {
-        name: username,
-        msg: input.value,
-        room: currentRoom
-    });
-}
-    input.value = "";
+        socket.emit("dm", { from: username, to: dmTarget, msg: text });
+    } else {
+        socket.emit("message", { name: username, msg: text, room: currentRoom });
+    }
+    input.value = ""; // Clear input immediately
 }
 
 // ── FILE UPLOAD ──
@@ -307,212 +253,33 @@ document.getElementById("imageInput").addEventListener("change", async function 
     try {
         const res = await fetch("/upload", { method: "POST", body: formData });
         const data = await res.json();
-        if (!data.success) { alert("Upload failed"); return; }
-        insertDateDivider(getDateLabel(new Date()));
-        renderMessage(username, data.url, true);
-        if (isDM) socket.emit("dm", { from: username, to: dmTarget, msg: data.url });
-        else socket.emit("message", { name: username, msg: data.url, room: currentRoom });
+        
+        if (!data.success) { 
+            alert("Upload failed"); 
+            return; 
+        }
+        
+        if (isDM) {
+            socket.emit("dm", { from: username, to: dmTarget, msg: data.url });
+        } else {
+            socket.emit("message", { name: username, msg: data.url, room: currentRoom });
+        }
     } catch (err) {
         alert("Upload error");
     }
-    this.value = "";
+    this.value = ""; // Reset file input
 });
 
-// ── CALL SYSTEM ──
-async function startCall() {
-    if (!isDM || !dmTarget) {
-        alert("Open a DM first to call");
-        return;
-    }
-
-    if (peer) {
-        peer.close();
-        peer = null;
-    }
-
-    pendingCandidates = [];
-
-    await openCamera();
-    if (!localStream) return;
-
-    peer = createPeer();
-
-    const offer = await peer.createOffer();
-    await peer.setLocalDescription(offer);
-
-    socket.emit("call-user", {
-        to: dmTarget,
-        from: username,
-        offer,
-        fromSocketId: socket.id
-    });
-}
-
-socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
-    currentCallTargetSocketId = fromSocketId;
-    window.pendingOffer = offer;
-    document.getElementById("callText").innerText = "📞 Incoming call from " + from;
-    document.getElementById("callPopup").style.display = "flex";
-});
-
-async function acceptCall() {
-    document.getElementById("callPopup").style.display = "none";
-    if (peer) {
-    peer.close();
-    peer = null;
-}
-pendingCandidates = [];
-    await openCamera();
-    if (!localStream) return;
-    peer = createPeer();
-    await peer.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
-    // flush queued ICE candidates
-for (const c of pendingCandidates) {
-    await peer.addIceCandidate(c);
-}
-pendingCandidates = [];
-    const answer = await peer.createAnswer();
-    await peer.setLocalDescription(answer);
-    socket.emit("call-accepted", { toSocketId: currentCallTargetSocketId, answer });
-}
-
-function rejectCall() {
-    document.getElementById("callPopup").style.display = "none";
-    socket.emit("end-call", { toSocketId: currentCallTargetSocketId });
-}
-
-socket.on("call-accepted", async ({ answer }) => {
-    if (peer) await peer.setRemoteDescription(new RTCSessionDescription(answer));
-});
-
-socket.on("ice-candidate", async ({ candidate }) => {
-    try {
-        if (!peer || !candidate) return;
-
-        const ice = new RTCIceCandidate(candidate);
-
-        if (!peer.remoteDescription) {
-            pendingCandidates.push(ice);
-            return;
-        }
-
-        await peer.addIceCandidate(ice);
-    } catch (e) {
-        console.log("ICE error:", e);
-    }
-});
-
-socket.on("call-ended", () => cleanupCall());
-
-socket.on("call-target-id", ({ targetSocketId }) => {
-    currentCallTargetSocketId = targetSocketId;
-});
-
-function createPeer() {
-    const pc = new RTCPeerConnection({
-    iceTransportPolicy: "relay",
-    iceServers: [
-  { urls: "stun:stun.relay.metered.ca:80" },
-
-  {
-    urls: "turn:global.relay.metered.ca:80",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  },
-  {
-    urls: "turn:global.relay.metered.ca:80?transport=tcp",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  },
-  {
-    urls: "turn:global.relay.metered.ca:443",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  },
-  {
-    urls: "turns:global.relay.metered.ca:443?transport=tcp",
-    username: "701acf6c481f2350081869a7",
-    credential: "ASPxdqlRB2ze3o/g"
-  }
-]
-    });
-
-    // 👇 ADD THIS (STEP 1 DEBUG ONLY)
-    pc.oniceconnectionstatechange = () => {
-        console.log("ICE STATE:", pc.iceConnectionState);
-    };
-
-    pc.onconnectionstatechange = () => {
-        console.log("PC STATE:", pc.connectionState);
-    };
-
-    localStream.getTracks().forEach(track => {
-    pc.addTrack(track, localStream);
-});
-
-    pc.ontrack = (event) => {
-    const video = document.getElementById("remoteVideo");
-    video.srcObject = event.streams[0];
-    video.play().catch(() => {});
-};
-
-    pc.onicecandidate = (event) => {
-    console.log(
-        "ICE GENERATED",
-        "TARGET:",
-        currentCallTargetSocketId,
-        event.candidate
-    );
-
-    if (event.candidate) {
-        socket.emit("ice-candidate", {
-            toSocketId: currentCallTargetSocketId,
-            candidate: event.candidate
-        });
-    }
-};
-return pc;
-}
-
-async function openCamera() {
-    try {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        document.getElementById("localVideo").srcObject = localStream;
-        document.getElementById("callUI").style.display = "flex";
-    } catch (err) {
-        alert("Camera/mic access failed — make sure you're on HTTPS and permissions are allowed");
-        console.log(err);
-    }
-}
-
-function endCall() {
-    socket.emit("end-call", { toSocketId: currentCallTargetSocketId });
-    cleanupCall();
-}
-
+// ── JITSI CALLING ──
 function startJitsiCall() {
-    if (!isDM || !dmTarget) {
-        alert("Open a DM first");
-        return;
+    if (!isDM || !dmTarget) { 
+        alert("Please open a Direct Message to start a call."); 
+        return; 
     }
-
-    const roomName = ["chatapp", username, dmTarget]
-        .sort()
-        .join("-");
-
-    window.open(
-        `https://meet.jit.si/${roomName}`,
-        "_blank"
-    );
-}
-
-function cleanupCall() {
-    if (peer) { peer.close(); peer = null; }
-    if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-    document.getElementById("localVideo").srcObject = null;
-    document.getElementById("remoteVideo").srcObject = null;
-    document.getElementById("callUI").style.display = "none";
-    currentCallTargetSocketId = "";
+    
+    // Create a unique, predictable room name based on the two usernames
+    const roomName = ["chatapp", username, dmTarget].sort().join("-");
+    window.open(`https://meet.jit.si/${roomName}`, "_blank");
 }
 </script>
 </body>

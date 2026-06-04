@@ -12,8 +12,11 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const userSocketMap = new Map();
+const onlineUsers = new Map();
 
-mongoose.connect("mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0");
+const MONGO_URI = "mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0";
+
+mongoose.connect(MONGO_URI);
 
 cloudinary.config({
     cloud_name: "dfdpgmrtz",
@@ -44,11 +47,11 @@ app.use(session({
     secret: "chatapp_secret",
     resave: false,
     saveUninitialized: false,
-    store: new MongoStore({
-        mongoUrl: "mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0"
-    }),
+    store: MongoStore.create({ mongoUrl: MONGO_URI }),
     cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }
 }));
+
+app.use(express.static("public"));
 
 app.get("/", (req, res) => {
     if (req.session.username) res.sendFile(__dirname + "/public/chat.html");
@@ -105,17 +108,11 @@ app.post("/upload", upload.single("image"), async (req, res) => {
     }
 });
 
-app.use(express.static("public"));
-
-const onlineUsers = new Map();
-
 io.on("connection", (socket) => {
-
     socket.on("userOnline", (username) => {
         userSocketMap.set(username, socket.id);
-onlineUsers.set(socket.id, username);
-
-io.emit("onlineUsers", Array.from(userSocketMap.keys()));
+        onlineUsers.set(socket.id, username);
+        io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("joinRoom", async (room) => {
@@ -132,62 +129,44 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("joinDM", async (data) => {
-    const from = data.from;
-    const to = data.to;
-    const dmRoom = [from, to].sort().join("_");
-    
-    // >>> THIS WILL SHOW US THE TRUTH IN THE RENDER LOGS <<<
-    console.log("=== RENDER LIVE DEBUG ===");
-    console.log(`User Opening DM: "${from}"`);
-    console.log(`Target User: "${to}"`);
-    console.log(`Looking for MongoDB Room: "${dmRoom}"`);
-    
-    socket.join(dmRoom);
-    const messages = await Message.find({ room: dmRoom, isDM: true }).sort({ time: 1 }).limit(50);
-    
-    console.log(`Found ${messages.length} messages in database for this room.`);
-    console.log("=========================");
-
-    socket.emit("loadMessages", messages);
-});
+        const { from, to } = data;
+        const dmRoom = [from, to].sort().join("_");
+        socket.join(dmRoom);
+        const messages = await Message.find({ room: dmRoom, isDM: true }).sort({ time: 1 }).limit(50);
+        socket.emit("loadMessages", messages);
+    });
 
     socket.on("dm", async (data) => {
-    const from = (data.from || "");
-    const to = (data.to || "");
-    const msg = data.msg;
+        const from = (data.from || "").trim();
+        const to = (data.to || "").trim();
+        const msg = data.msg;
+        if (!from || !to || !msg) return;
 
-    if (!from || !to || !msg) return;
+        const dmRoom = [from, to].sort().join("_");
+        const newMsg = await Message.create({ name: from, msg, room: dmRoom, to, isDM: true });
 
-    const dmRoom = [from.trim(), to.trim()].sort().join("_");
-
-    await Message.create({
-        name: from,
-        msg,
-        room: dmRoom,
-        to,
-        isDM: true
+        io.to(dmRoom).emit("message", {
+            _id: newMsg._id,
+            name: from,
+            msg,
+            room: dmRoom,
+            senderId: socket.id,
+            isDM: true
+        });
     });
-
-    io.to(dmRoom).emit("message", {
-        name: from,
-        msg,
-        room: dmRoom,
-        senderId: socket.id,
-        isDM: true
-    });
-});
 
     socket.on("message", async (data) => {
-        console.log("GENERAL MESSAGE RECEIVED:", data);
         if (!data?.room || !data?.msg || !data?.name) return;
-        await Message.create({ name: data.name, msg: data.msg, room: data.room, isDM: false });
+        const newMsg = await Message.create({ name: data.name, msg: data.msg, room: data.room, isDM: false });
+        
         io.to(data.room).emit("message", {
-    name: data.name,
-    msg: data.msg,
-    room: data.room,
-    senderId: socket.id,
-    isDM: false
-});
+            _id: newMsg._id,
+            name: data.name,
+            msg: data.msg,
+            room: data.room,
+            senderId: socket.id,
+            isDM: false
+        });
     });
 
     socket.on("deleteMessage", async (data) => {
@@ -196,40 +175,15 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
         io.emit("messageDeleted", { id: data.id });
     });
 
-    // ── CALL SIGNALING (all routed by socket ID) ──
-    socket.on("call-user", ({ to, from, offer }) => {
-    const targetId = userSocketMap.get(to);
-    if (!targetId) { console.log("CALL FAILED: user not found ->", to); return; }
-
-    // ADD THIS LINE:
-    socket.emit("call-target-id", { targetSocketId: targetId });
-
-    io.to(targetId).emit("incoming-call", { from, offer, fromSocketId: socket.id });
-});
-
-    socket.on("call-accepted", ({ toSocketId, answer }) => {
-        io.to(toSocketId).emit("call-accepted", { answer });
-    });
-
-    socket.on("ice-candidate", ({ toSocketId, candidate }) => {
-        io.to(toSocketId).emit("ice-candidate", { candidate });
-    });
-
-    socket.on("end-call", ({ toSocketId }) => {
-        io.to(toSocketId).emit("call-ended");
-    });
-
     socket.on("disconnect", async () => {
-    const username = onlineUsers.get(socket.id);
-
-    if (username) {
-        userSocketMap.delete(username);
-        onlineUsers.delete(socket.id);
-        await User.updateOne({ username }, { lastSeen: new Date() });
-    }
-
-    io.emit("onlineUsers", Array.from(userSocketMap.keys()));
-});
+        const username = onlineUsers.get(socket.id);
+        if (username) {
+            userSocketMap.delete(username);
+            onlineUsers.delete(socket.id);
+            await User.updateOne({ username }, { lastSeen: new Date() });
+        }
+        io.emit("onlineUsers", Array.from(userSocketMap.keys()));
+    });
 });
 
 server.listen(process.env.PORT || 3000, () => {
