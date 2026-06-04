@@ -120,6 +120,11 @@ io.on("connection", (socket) => {
     }
 });
 
+socket.on("call-invite", ({ to, from, room }) => {
+    const targetId = userSocketMap.get(to);
+    if (targetId) io.to(targetId).emit("call-invite", { from, room });
+});
+
     socket.on("userOnline", (username) => {
         userSocketMap.set(username, socket.id);
 onlineUsers.set(socket.id, username);

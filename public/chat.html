@@ -3,38 +3,76 @@
 <head>
     <title>Chat Rooms</title>
     <link rel="stylesheet" href="style.css">
-    <link href="[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap)" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div id="appContainer">
-
-    <!-- SIDEBAR -->
     <div id="sidebar">
-        <div id="sidebarHeader">💬 Chat Rooms</div>
-        <div class="sidebarItem active" onclick="switchToGeneral()">🌐 General</div>
-        <div id="sidebarHeader2">💌 Direct Messages</div>
+        <div id="sidebarTop">
+            <div id="sidebarHeader">💬 Chatrooms</div>
+        </div>
+        <div class="sectionLabel">CHANNELS</div>
+        <div class="sidebarItem active" onclick="switchToGeneral()">
+            <span class="itemIcon">🌐</span>
+            <span class="itemLabel">General</span>
+        </div>
+        <div class="sectionLabel">DIRECT MESSAGES</div>
         <div id="userList"></div>
-        <div id="logoutBtn" onclick="window.location.href='/logout'">🚪 Logout</div>
+        <div id="sidebarBottom">
+            <div id="logoutBtn" onclick="window.location.href='/logout'">
+                <span>🚪</span> Logout
+            </div>
+        </div>
     </div>
 
-    <!-- MAIN -->
     <div id="main">
-        <div id="chatHeader">🌐 General</div>
+        <div id="chatHeader">
+            <div id="chatHeaderLeft">
+                <div id="chatHeaderName">🌐 General</div>
+                <div id="chatHeaderStatus"></div>
+            </div>
+            <div id="chatHeaderRight">
+                <button class="headerBtn" onclick="startJitsiCall()" title="Video Call">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+                </button>
+            </div>
+        </div>
         <div id="chat"></div>
-        <div id="inputBox">
-            <input type="file" id="imageInput" accept="image/*,video/*" style="display:none">
-            <button class="attachBtn" onclick="document.getElementById('imageInput').click()">📎</button>
-            <input id="msg" placeholder="Type message..." 
-       oninput="socket.emit('typing', { to: dmTarget })" 
-       onkeydown="if(event.key==='Enter') sendMessage()">
-            <button class="callBtn" onclick="startJitsiCall()" title="Start video call">📞</button>
-            <button class="sendBtn" onclick="sendMessage()">➤</button>
+        <div id="inputArea">
+            <div id="inputBox">
+                <input type="file" id="imageInput" accept="image/*,video/*" style="display:none">
+                <button class="attachBtn" onclick="document.getElementById('imageInput').click()" title="Attach file">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                </button>
+                <input id="msg" placeholder="Message..."
+                    oninput="socket.emit('typing', { to: dmTarget })"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}">
+                <button class="sendBtn" onclick="sendMessage()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
+<div id="callPopup">
+    <div id="callPopupInner">
+        <div id="callAvatar">👤</div>
+        <div id="callText">Incoming call...</div>
+        <div id="callPopupBtns">
+            <button class="rejectBtn" onclick="document.getElementById('callPopup').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+            </button>
+            <button class="acceptBtn" onclick="acceptJitsiCall()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
 <script src="/socket.io/socket.io.js"></script>
-<script src="https://meet.jit.si/external_api.js"></script>
 <script>
 const socket = io();
 let username = "";
@@ -45,20 +83,25 @@ let lastDateLabel = "";
 let unreadCounts = {};
 let onlineUsers = [];
 let lastSeenData = {};
-
+let pendingJitsiRoom = null;
 
 fetch("/session")
     .then(r => r.json())
     .then(data => {
         username = data.username;
         socket.emit("userOnline", username);
-        // Ensure we join 'general' explicitly
         currentRoom = "general";
-        socket.emit("joinRoom", currentRoom); 
+        socket.emit("joinRoom", currentRoom);
         loadUsers();
     });
 
-// ── USERS ──
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.innerText = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 3000);
+}
+
 function loadUsers() {
     fetch("/users")
         .then(r => r.json())
@@ -70,14 +113,13 @@ function loadUsers() {
                 div.classList.add("sidebarItem");
                 div.id = "dm-" + u.username;
                 const isOnline = onlineUsers.includes(u.username);
-                let statusText = isOnline ? "Online" : "Offline";
-                if (!isOnline && lastSeenData[u.username]) {
-    statusText = formatLastSeen(lastSeenData[u.username]);
-}
+                let statusText = isOnline ? "Online" : formatLastSeen(lastSeenData[u.username]);
+                const initials = u.username.slice(0, 2).toUpperCase();
                 div.innerHTML = `
-                    <div>
-                        <div>${isOnline ? "🟢" : "⚫"} ${u.username}</div>
-                        <div class="statusText">${statusText}</div>
+                    <div class="dmAvatar ${isOnline ? 'online' : ''}">${initials}</div>
+                    <div class="dmInfo">
+                        <div class="dmName">${u.username}</div>
+                        <div class="dmStatus">${statusText}</div>
                     </div>
                     <span class="unreadBadge" id="badge-${u.username}" style="display:none">0</span>
                 `;
@@ -98,25 +140,31 @@ socket.on("lastSeenData", (data) => {
     loadUsers();
 });
 
-// ── NAVIGATION ──
+function formatLastSeen(dateStr) {
+    if (!dateStr) return "Offline";
+    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (diff < 60) return "Just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+}
+
 function switchToGeneral() {
-    isDM = false;
-    dmTarget = "";
-    currentRoom = "general";
-    lastDateLabel = "";
+    isDM = false; dmTarget = ""; currentRoom = "general"; lastDateLabel = "";
     document.getElementById("chat").innerHTML = "";
-    document.getElementById("chatHeader").innerText = "🌐 General";
+    document.getElementById("chatHeaderName").innerText = "🌐 General";
+    document.getElementById("chatHeaderStatus").innerText = "";
     document.querySelectorAll(".sidebarItem").forEach(i => i.classList.remove("active"));
     document.querySelector(".sidebarItem").classList.add("active");
     socket.emit("joinRoom", currentRoom);
 }
 
 function openDM(target, el) {
-    isDM = true;
-    dmTarget = target;
-    lastDateLabel = "";
+    isDM = true; dmTarget = target; lastDateLabel = "";
     document.getElementById("chat").innerHTML = "";
-    document.getElementById("chatHeader").innerText = "💌 " + target;
+    document.getElementById("chatHeaderName").innerText = target;
+    const isOnline = onlineUsers.includes(target);
+    document.getElementById("chatHeaderStatus").innerText = isOnline ? "🟢 Online" : "Offline";
     document.querySelectorAll(".sidebarItem").forEach(i => i.classList.remove("active"));
     el.classList.add("active");
     unreadCounts[target] = 0;
@@ -125,7 +173,6 @@ function openDM(target, el) {
     socket.emit("joinDM", { from: username, to: target });
 }
 
-// ── DATE DIVIDERS ──
 function getDateLabel(dateStr) {
     const d = new Date(dateStr);
     const today = new Date();
@@ -134,16 +181,6 @@ function getDateLabel(dateStr) {
     if (d.toDateString() === today.toDateString()) return "Today";
     if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
     return d.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
-}
-
-function formatLastSeen(dateStr) {
-    if (!dateStr) return "Offline";
-    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000); 
-
-    if (diff < 60) return "Last seen just now";
-    if (diff < 3600) return `Last seen ${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `Last seen ${Math.floor(diff / 3600)}h ago`;
-    return `Last seen ${Math.floor(diff / 86400)}d ago`;
 }
 
 function insertDateDivider(dateLabel) {
@@ -155,7 +192,6 @@ function insertDateDivider(dateLabel) {
     document.getElementById("chat").appendChild(div);
 }
 
-// ── MESSAGES ──
 socket.on("loadMessages", (messages) => {
     document.getElementById("chat").innerHTML = "";
     lastDateLabel = "";
@@ -167,14 +203,15 @@ socket.on("loadMessages", (messages) => {
 });
 
 socket.on("message", (data) => {
-    // Check if the message is already rendered (by ID)
     if (document.querySelector(`[data-id="${data._id}"]`)) return;
-
-    // Filter by Room/DM
-    const isDM = data.isDM;
-    if (isDM && (!isDM || (dmTarget !== data.name && dmTarget !== data.to))) return;
-    if (!isDM && currentRoom !== data.room) return;
-
+    const inDM = data.isDM;
+    if (inDM && (!isDM || (dmTarget !== data.name && dmTarget !== data.to))) {
+        unreadCounts[data.name] = (unreadCounts[data.name] || 0) + 1;
+        const badge = document.getElementById("badge-" + data.name);
+        if (badge) { badge.innerText = unreadCounts[data.name]; badge.style.display = "inline-flex"; }
+        return;
+    }
+    if (!inDM && currentRoom !== data.room) return;
     insertDateDivider(getDateLabel(data.time || new Date()));
     renderMessage(data.name, data.msg, data.name === username, null, data._id);
 });
@@ -183,18 +220,20 @@ function renderMessage(name, msg, isMe, time, id) {
     time = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const div = document.createElement("div");
     div.setAttribute("data-id", id || "");
-
     const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/");
     const isVideo = msg.includes("cloudinary.com") && msg.includes("/video/upload/");
-
-    const deleteBtn = isMe ? `<button class="deleteBtn" onclick="deleteMessage('${id}', this)">🗑️</button>` : "";
-    const copyBtn = !isImage && !isVideo ? `<button class="copyBtn" onclick="copyMessage(this)">📋</button>` : "";
-
+    const deleteBtn = isMe ? `<button class="actionBtn deleteBtn" onclick="deleteMessage('${id}', this)" title="Delete">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </button>` : "";
+    const copyBtn = !isImage && !isVideo ? `<button class="actionBtn copyBtn" onclick="copyMessage(this)" title="Copy">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+    </button>` : "";
     const mediaContent = isImage
-        ? `<img src="${msg}" style="max-width:280px;border-radius:12px;display:block;">`
+        ? `<img src="${msg}" style="max-width:280px;border-radius:12px;display:block;margin-top:4px;">`
         : isVideo
-        ? `<video controls style="max-width:280px;border-radius:12px;display:block;"><source src="${msg}"></video>`
+        ? `<video controls style="max-width:280px;border-radius:12px;display:block;margin-top:4px;"><source src="${msg}"></video>`
         : `<div class="text">${msg}</div>`;
+    const initials = name.slice(0, 2).toUpperCase();
 
     if (isMe) {
         div.classList.add("messageWrapper", "meWrapper");
@@ -202,118 +241,102 @@ function renderMessage(name, msg, isMe, time, id) {
             <div class="msgRow">
                 <div class="msgActions meActions">${copyBtn}${deleteBtn}</div>
                 <div class="bubbleCol">
-                    <div class="mySender">You</div>
-                    <div class="msg me">${mediaContent}</div>
-                    <div class="myTime">${time}</div>
+                    <div class="msg me">${mediaContent}<span class="msgTime">${time}</span></div>
                 </div>
             </div>`;
     } else {
         div.classList.add("messageWrapper");
         div.innerHTML = `
             <div class="msgRow">
+                <div class="avatarCircle">${initials}</div>
                 <div class="bubbleCol">
-                    <div class="sender">${name}</div>
-                    <div class="msg">${mediaContent}</div>
-                    <div class="time">${time}</div>
+                    <div class="senderName">${name}</div>
+                    <div class="msg">${mediaContent}<span class="msgTime">${time}</span></div>
                 </div>
                 <div class="msgActions themActions">${copyBtn}</div>
             </div>`;
     }
     const chat = document.getElementById("chat");
-const isAtBottom = chat.scrollHeight - chat.scrollTop <= chat.clientHeight + 100;
-
-chat.appendChild(div);
-
-if (isAtBottom || isMe) {
-    chat.scrollTop = chat.scrollHeight;
-}
+    const isAtBottom = chat.scrollHeight - chat.scrollTop <= chat.clientHeight + 120;
+    chat.appendChild(div);
+    if (isAtBottom || isMe) chat.scrollTop = chat.scrollHeight;
 }
 
 function deleteMessage(id, btn) {
-    btn.closest(".messageWrapper").remove();
+    const wrapper = btn.closest(".messageWrapper");
+    wrapper.style.opacity = "0";
+    wrapper.style.transform = "scale(0.95)";
+    setTimeout(() => wrapper.remove(), 200);
     socket.emit("deleteMessage", { id });
 }
 
 function copyMessage(btn) {
     const text = btn.closest(".msgRow").querySelector(".text")?.innerText;
-    if (text) navigator.clipboard.writeText(text);
+    if (text) { navigator.clipboard.writeText(text); showToast("Copied!"); }
 }
 
 socket.on("messageDeleted", (data) => {
     const el = document.querySelector(`[data-id="${data.id}"]`);
-    if (el) el.remove();
+    if (el) { el.style.opacity = "0"; setTimeout(() => el.remove(), 200); }
 });
 
 function sendMessage() {
     const input = document.getElementById("msg");
     if (!input.value.trim()) return;
-
-    // We no longer call renderMessage() here.
-    // The server will broadcast it back to us, 
-    // and the socket.on("message") above will render it for us.
-    
-    if (isDM) {
-        socket.emit("dm", { from: username, to: dmTarget, msg: input.value });
-    } else {
-        socket.emit("message", { name: username, msg: input.value, room: currentRoom });
-    }
+    if (isDM) socket.emit("dm", { from: username, to: dmTarget, msg: input.value });
+    else socket.emit("message", { name: username, msg: input.value, room: currentRoom });
     input.value = "";
 }
 
-// ── FILE UPLOAD ──
 document.getElementById("imageInput").addEventListener("change", async function () {
     const file = this.files[0];
     if (!file) return;
+    showToast("Uploading...");
     const formData = new FormData();
     formData.append("image", file);
     try {
         const res = await fetch("/upload", { method: "POST", body: formData });
         const data = await res.json();
-        if (!data.success) { alert("Upload failed"); return; }
-        insertDateDivider(getDateLabel(new Date()));
-        renderMessage(username, data.url, true);
+        if (!data.success) { showToast("Upload failed"); return; }
         if (isDM) socket.emit("dm", { from: username, to: dmTarget, msg: data.url });
         else socket.emit("message", { name: username, msg: data.url, room: currentRoom });
-    } catch (err) {
-        alert("Upload error");
-    }
+        showToast("Uploaded!");
+    } catch (err) { showToast("Upload error"); }
     this.value = "";
 });
 
+// ── JITSI CALLS ──
 function startJitsiCall() {
-    if (!isDM || !dmTarget) {
-        alert("Open a DM first");
-        return;
-    }
-
-    const roomName = ["chatapp", username, dmTarget]
-        .sort()
-        .join("-");
-
-    window.open(
-        `https://meet.jit.si/${roomName}`,
-        "_blank"
-    );
+    if (!isDM || !dmTarget) { showToast("Open a DM first"); return; }
+    const roomName = ["chatapp", username, dmTarget].sort().join("-");
+    socket.emit("call-invite", { to: dmTarget, from: username, room: roomName });
+    window.open(`https://meet.jit.si/${roomName}`, "_blank");
+    showToast("Call started — waiting for " + dmTarget);
 }
 
-let typingTimeout;
+socket.on("call-invite", ({ from, room }) => {
+    pendingJitsiRoom = room;
+    document.getElementById("callText").innerText = `📞 ${from} is calling...`;
+    document.getElementById("callPopup").style.display = "flex";
+});
 
+function acceptJitsiCall() {
+    document.getElementById("callPopup").style.display = "none";
+    if (pendingJitsiRoom) window.open(`https://meet.jit.si/${pendingJitsiRoom}`, "_blank");
+}
+
+// ── TYPING ──
+let typingTimeout;
 socket.on("userTyping", (data) => {
     if (isDM && dmTarget === data.from) {
-        const header = document.getElementById("chatHeader");
-        const originalText = header.innerText;
-        
-        if (header.innerText !== "Typing...") {
-            header.innerText = "Typing...";
-        }
-        
+        document.getElementById("chatHeaderStatus").innerText = "typing...";
         clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => { 
-            header.innerText = "💌 " + dmTarget; // Restore the name explicitly
+        typingTimeout = setTimeout(() => {
+            const isOnline = onlineUsers.includes(dmTarget);
+            document.getElementById("chatHeaderStatus").innerText = isOnline ? "🟢 Online" : "Offline";
         }, 2000);
     }
 });
-
 </script>
 </body>
 </html>
