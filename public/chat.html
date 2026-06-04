@@ -374,25 +374,14 @@ function createPeer() {
         bundlePolicy: "max-bundle", 
         rtcpMuxPolicy: "require",
         iceServers: [
-            // 1. Google & Twilio STUN for fast local network checks
+            // 1. The standard Google ping to check if you are on the same Wi-Fi
             { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:global.stun.twilio.com:3478" },
             
-            // 2. Public Open Relay TURN Servers (No account limits)
+            // 2. The Stealth TURN Server: Forces TCP on Port 443 to bypass DPI firewalls
             {
-                urls: "turn:openrelay.metered.ca:80",
-                username: "openrelayproject",
-                credential: "openrelayproject"
-            },
-            {
-                urls: "turn:openrelay.metered.ca:443",
-                username: "openrelayproject",
-                credential: "openrelayproject"
-            },
-            {
-                urls: "turn:openrelay.metered.ca:443?transport=tcp",
-                username: "openrelayproject",
-                credential: "openrelayproject"
+                urls: "turn:global.relay.metered.ca:443?transport=tcp",
+                username: "701acf6c481f2350081869a7",
+                credential: "ASPxdqlRB2ze3o/g"
             }
         ]
     });
