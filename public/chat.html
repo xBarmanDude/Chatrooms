@@ -179,6 +179,7 @@ socket.on("loadMessages", (messages) => {
 });
 
 socket.on("message", (data) => {
+    console.log("MESSAGE RECEIVED:", data);
     if (data.senderId !== socket.id) {
         insertDateDivider(getDateLabel(new Date()));
         renderMessage(data.name, data.msg, false);
