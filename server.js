@@ -92,12 +92,37 @@ app.get("/users", async (req, res) => {
 
 app.post("/upload", upload.single("image"), async (req, res) => {
     try {
+        if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
+
+        const originalName = req.file.originalname;
+        const isImageOrVideo = req.file.mimetype.startsWith("image/") || req.file.mimetype.startsWith("video/");
+        
+        // 1. Follow Cloudinary rules: strip extensions for images/videos, keep them for raw docs
+        let nameWithoutExtension = originalName;
+        if (isImageOrVideo) {
+            const lastDotIndex = originalName.lastIndexOf(".");
+            if (lastDotIndex !== -1) {
+                nameWithoutExtension = originalName.substring(0, lastDotIndex);
+            }
+        }
+        
+        // 2. Clean up any illegal URL/Cloudinary characters (spaces, ?, #, etc.) with hyphens
+        const safeName = nameWithoutExtension.replace(/[?&#\\%<>+ ]/g, "-");
+        
+        // 3. Create a unique custom public ID prefixed with a timestamp and an underscore
+        const customPublicId = Date.now() + "_" + safeName;
+
         const result = await new Promise((resolve, reject) => {
             cloudinary.uploader.upload_stream(
-                { folder: "chat_uploads", resource_type: "auto" },
+                { 
+                    folder: "chat_uploads", 
+                    resource_type: "auto",
+                    public_id: customPublicId // Tells Cloudinary exactly what to name the file URL
+                },
                 (error, result) => { if (error) reject(error); else resolve(result); }
             ).end(req.file.buffer);
         });
+        
         res.json({ success: true, url: result.secure_url });
     } catch (err) {
         console.error(err);
