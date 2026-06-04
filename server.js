@@ -178,6 +178,7 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
 });
 
     socket.on("message", async (data) => {
+        console.log("GENERAL MESSAGE RECEIVED:", data);
         if (!data?.room || !data?.msg || !data?.name) return;
         await Message.create({ name: data.name, msg: data.msg, room: data.room, isDM: false });
         io.to(data.room).emit("message", {
