@@ -342,26 +342,23 @@ socket.on("call-ended", () => cleanupCall());
 
 function createPeer() {
     const pc = new RTCPeerConnection({
+        iceTransportPolicy: "all",
+        bundlePolicy: "max-bundle",
+        rtcpMuxPolicy: "require",
         iceServers: [
+            // 1. Standard Google fallback for local network testing
             { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun.relay.metered.ca:80" },
+            
+            // 2. Primary UDP TURN server (fastest for video relay)
             {
                 urls: "turn:global.relay.metered.ca:80",
                 username: "701acf6c481f2350081869a7",
                 credential: "ASPxdqlRB2ze3o/g"
             },
+            
+            // 3. Secure TCP TURN server (bypasses strict corporate/mobile firewalls)
             {
-                urls: "turn:global.relay.metered.ca:80?transport=tcp",
-                username: "701acf6c481f2350081869a7",
-                credential: "ASPxdqlRB2ze3o/g"
-            },
-            {
-                urls: "turn:global.relay.metered.ca:443",
-                username: "701acf6c481f2350081869a7",
-                credential: "ASPxdqlRB2ze3o/g"
-            },
-            {
-                urls: "turns:global.relay.metered.ca:443?transport=tcp",
+                urls: "turn:global.relay.metered.ca:443?transport=tcp",
                 username: "701acf6c481f2350081869a7",
                 credential: "ASPxdqlRB2ze3o/g"
             }
@@ -383,9 +380,12 @@ function createPeer() {
     pc.ontrack = (event) => {
         console.log("TRACK RECEIVED:", event.track.kind, "active:", event.streams[0]?.active);
         const video = document.getElementById("remoteVideo");
+        
+        // Don't re-assign if it's already the same stream mapping
+        if (video.srcObject && video.srcObject.id === event.streams[0].id) return;
+        
         video.srcObject = event.streams[0];
         video.play().catch(() => {
-            // Mobile autoplay policy — mute then unmute
             video.muted = true;
             video.play().then(() => {
                 setTimeout(() => { video.muted = false; }, 500);
