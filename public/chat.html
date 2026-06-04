@@ -374,59 +374,50 @@ function createPeer() {
         bundlePolicy: "max-bundle", 
         rtcpMuxPolicy: "require",
         iceServers: [
-            { urls: "stun:stun.relay.metered.ca:80" },
+            // 1. Add Google's reliable STUN server first for instant local connections
+            { urls: "stun:stun.l.google.com:19302" },
+            // 2. Keep Metered TURN servers as fallback for strict networks
             {
                 urls: "turn:global.relay.metered.ca:80",
                 username: "701acf6c481f2350081869a7",
                 credential: "ASPxdqlRB2ze3o/g"
             },
             {
-                urls: "turn:global.relay.metered.ca:80?transport=tcp",
-                username: "701acf6c481f2350081869a7",
-                credential: "ASPxdqlRB2ze3o/g"
-            },
-            {
-                urls: "turn:global.relay.metered.ca:443",
-                username: "701acf6c481f2350081869a7",
-                credential: "ASPxdqlRB2ze3o/g"
-            },
-            {
-                urls: "turns:global.relay.metered.ca:443?transport=tcp",
+                urls: "turn:global.relay.metered.ca:443?transport=tcp",
                 username: "701acf6c481f2350081869a7",
                 credential: "ASPxdqlRB2ze3o/g"
             }
         ]
     });
 
-    pc.oniceconnectionstatechange = () => console.log("ICE STATE:", pc.iceConnectionState);
-    pc.onconnectionstatechange = () => console.log("PC STATE:", pc.connectionState);
+    // AUTO-CLEANUP FIX: Detect if the internet drops and end the call cleanly
+    pc.oniceconnectionstatechange = () => {
+        console.log("ICE STATE:", pc.iceConnectionState);
+        if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
+            alert("Connection lost. Ending call.");
+            cleanupCall();
+        }
+    };
 
     if (localStream) {
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
     }
 
+    // SIMPLIFIED VIDEO FIX: Direct assignment prevents race conditions
     pc.ontrack = (event) => {
-    console.log("TRACK RECEIVED:", event.track.kind, "stream active:", event.streams[0]?.active);
-    
-    const video = document.getElementById("remoteVideo");
-    
-    if (!video.srcObject) {
-        video.srcObject = event.streams[0];
-    }
-    
-    event.streams[0].onactive = () => {
-        console.log("Stream became active!");
-        video.srcObject = event.streams[0];
-        video.muted = false;
-        video.play().catch(e => console.log("Play error:", e));
+        console.log("TRACK RECEIVED:", event.track.kind);
+        const video = document.getElementById("remoteVideo");
+        
+        // Prevent re-assigning if it's the exact same stream
+        if (video.srcObject !== event.streams[0]) {
+            video.srcObject = event.streams[0];
+            video.play().catch(e => {
+                console.log("Autoplay blocked, unmuting required:", e);
+                video.muted = true;
+                video.play();
+            });
+        }
     };
-    
-    // Also try directly in case it's already active
-    if (event.streams[0].active) {
-        video.srcObject = event.streams[0];
-        video.play().catch(e => {});
-    }
-};
 
     pc.onicecandidate = (event) => {
         if (event.candidate) {

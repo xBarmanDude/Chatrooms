@@ -91,6 +91,11 @@ app.get("/users", async (req, res) => {
 });
 
 app.post("/upload", upload.single("image"), async (req, res) => {
+    // SECURITY FIX: Prevent server crash if no file is sent
+    if (!req.file) {
+        return res.status(400).json({ success: false, error: "No file uploaded" });
+    }
+
     try {
         const result = await new Promise((resolve, reject) => {
             cloudinary.uploader.upload_stream(
@@ -220,16 +225,19 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("disconnect", async () => {
-    const username = onlineUsers.get(socket.id);
+        const username = onlineUsers.get(socket.id);
 
-    if (username) {
-        userSocketMap.delete(username);
-        onlineUsers.delete(socket.id);
-        await User.updateOne({ username }, { lastSeen: new Date() });
-    }
+        if (username) {
+            // FIX: Only delete the user if the disconnecting tab is their active primary socket
+            if (userSocketMap.get(username) === socket.id) {
+                userSocketMap.delete(username);
+                await User.updateOne({ username }, { lastSeen: new Date() });
+            }
+            onlineUsers.delete(socket.id);
+        }
 
-    io.emit("onlineUsers", Array.from(userSocketMap.keys()));
-});
+        io.emit("onlineUsers", Array.from(userSocketMap.keys()));
+    });
 });
 
 server.listen(process.env.PORT || 3000, () => {
