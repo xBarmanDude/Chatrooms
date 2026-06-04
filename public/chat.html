@@ -36,7 +36,7 @@
     </div>
 </div>
 
-<div id="callUI" style="display: none;">
+<div id="callUI" style="display:none;">
     <div id="callUIHeader">
         <span id="callUILabel">📹 In Call</span>
         <button class="endCallBtn" onclick="endCall()">End Call</button>
@@ -60,7 +60,6 @@ let onlineUsers = [];
 let lastSeenData = {};
 let pendingCandidates = [];
 
-// ── CALL STATE ──
 let peer = null;
 let localStream = null;
 let currentCallTargetSocketId = "";
@@ -74,7 +73,6 @@ fetch("/session")
         loadUsers();
     });
 
-// ── USERS ──
 function loadUsers() {
     fetch("/users")
         .then(r => r.json())
@@ -115,7 +113,6 @@ socket.on("lastSeenData", (data) => {
     loadUsers();
 });
 
-// ── NAVIGATION ──
 function switchToGeneral() {
     isDM = false;
     dmTarget = "";
@@ -142,7 +139,6 @@ function openDM(target, el) {
     socket.emit("joinDM", { from: username, to: target });
 }
 
-// ── DATE DIVIDERS ──
 function getDateLabel(dateStr) {
     const d = new Date(dateStr);
     const today = new Date();
@@ -162,7 +158,6 @@ function insertDateDivider(dateLabel) {
     document.getElementById("chat").appendChild(div);
 }
 
-// ── MESSAGES ──
 socket.on("loadMessages", (messages) => {
     document.getElementById("chat").innerHTML = "";
     lastDateLabel = "";
@@ -193,19 +188,15 @@ function renderMessage(name, msg, isMe, time, id) {
     time = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const div = document.createElement("div");
     div.setAttribute("data-id", id || "");
-
     const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/");
     const isVideo = msg.includes("cloudinary.com") && msg.includes("/video/upload/");
-
     const deleteBtn = isMe ? `<button class="deleteBtn" onclick="deleteMessage('${id}', this)">🗑️</button>` : "";
     const copyBtn = !isImage && !isVideo ? `<button class="copyBtn" onclick="copyMessage(this)">📋</button>` : "";
-
     const mediaContent = isImage
         ? `<img src="${msg}" style="max-width:280px;border-radius:12px;display:block;">`
         : isVideo
         ? `<video controls style="max-width:280px;border-radius:12px;display:block;"><source src="${msg}"></video>`
         : `<div class="text">${msg}</div>`;
-
     if (isMe) {
         div.classList.add("messageWrapper", "meWrapper");
         div.innerHTML = `
@@ -258,7 +249,6 @@ function sendMessage() {
     input.value = "";
 }
 
-// ── FILE UPLOAD ──
 document.getElementById("imageInput").addEventListener("change", async function () {
     const file = this.files[0];
     if (!file) return;
@@ -272,36 +262,29 @@ document.getElementById("imageInput").addEventListener("change", async function 
         renderMessage(username, data.url, true);
         if (isDM) socket.emit("dm", { from: username, to: dmTarget, msg: data.url });
         else socket.emit("message", { name: username, msg: data.url, room: currentRoom });
-    } catch (err) {
-        alert("Upload error");
-    }
+    } catch (err) { alert("Upload error"); }
     this.value = "";
 });
 
 // ── CALL SYSTEM ──
+
 async function startCall() {
-    if (!isDM || !dmTarget) {
-        alert("Open a DM first to call");
-        return;
-    }
+    if (!isDM || !dmTarget) { alert("Open a DM first to call"); return; }
     if (peer) { peer.close(); peer = null; }
     pendingCandidates = [];
 
-    // Force call container layer to paint layout geometries immediately
-    document.getElementById("callUI").style.display = "flex";
-
     await openCamera();
-    if (!localStream) {
-        document.getElementById("callUI").style.display = "none";
-        return;
-    }
+    if (!localStream) return;
 
-    const targetPayload = { to: dmTarget, from: username, fromSocketId: socket.id };
     peer = createPeer();
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
-    socket.emit("call-user", { ...targetPayload, offer });
+    socket.emit("call-user", { to: dmTarget, from: username, offer });
 }
+
+socket.on("call-target-id", ({ targetSocketId }) => {
+    currentCallTargetSocketId = targetSocketId;
+});
 
 socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
     currentCallTargetSocketId = fromSocketId;
@@ -312,27 +295,20 @@ socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
 
 async function acceptCall() {
     document.getElementById("callPopup").style.display = "none";
-    
-    // Force target window visibility prior to attaching device interfaces
-    document.getElementById("callUI").style.display = "flex";
-
     if (peer) { peer.close(); peer = null; }
     pendingCandidates = [];
-    
+
     await openCamera();
-    if (!localStream) {
-        document.getElementById("callUI").style.display = "none";
-        return;
-    }
-    
+    if (!localStream) return;
+
     peer = createPeer();
     await peer.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
-    
+
     for (const c of pendingCandidates) {
-        await peer.addIceCandidate(c).catch(e => {});
+        await peer.addIceCandidate(c).catch(() => {});
     }
     pendingCandidates = [];
-    
+
     const answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
     socket.emit("call-accepted", { toSocketId: currentCallTargetSocketId, answer });
@@ -364,16 +340,10 @@ socket.on("ice-candidate", async ({ candidate }) => {
 
 socket.on("call-ended", () => cleanupCall());
 
-socket.on("call-target-id", ({ targetSocketId }) => {
-    currentCallTargetSocketId = targetSocketId;
-});
-
 function createPeer() {
     const pc = new RTCPeerConnection({
-        iceTransportPolicy: "all", 
-        bundlePolicy: "max-bundle", 
-        rtcpMuxPolicy: "require",
         iceServers: [
+            { urls: "stun:stun.l.google.com:19302" },
             { urls: "stun:stun.relay.metered.ca:80" },
             {
                 urls: "turn:global.relay.metered.ca:80",
@@ -399,34 +369,29 @@ function createPeer() {
     });
 
     pc.oniceconnectionstatechange = () => console.log("ICE STATE:", pc.iceConnectionState);
-    pc.onconnectionstatechange = () => console.log("PC STATE:", pc.connectionState);
+    pc.onconnectionstatechange = () => {
+        console.log("PC STATE:", pc.connectionState);
+        if (pc.connectionState === "connected") {
+            document.getElementById("callUI").style.display = "flex";
+        }
+    };
 
     if (localStream) {
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
     }
 
     pc.ontrack = (event) => {
-    console.log("TRACK RECEIVED:", event.track.kind, "stream active:", event.streams[0]?.active);
-    
-    const video = document.getElementById("remoteVideo");
-    
-    if (!video.srcObject) {
+        console.log("TRACK RECEIVED:", event.track.kind, "active:", event.streams[0]?.active);
+        const video = document.getElementById("remoteVideo");
         video.srcObject = event.streams[0];
-    }
-    
-    event.streams[0].onactive = () => {
-        console.log("Stream became active!");
-        video.srcObject = event.streams[0];
-        video.muted = false;
-        video.play().catch(e => console.log("Play error:", e));
+        video.play().catch(() => {
+            // Mobile autoplay policy — mute then unmute
+            video.muted = true;
+            video.play().then(() => {
+                setTimeout(() => { video.muted = false; }, 500);
+            }).catch(e => console.log("Play failed:", e));
+        });
     };
-    
-    // Also try directly in case it's already active
-    if (event.streams[0].active) {
-        video.srcObject = event.streams[0];
-        video.play().catch(e => {});
-    }
-};
 
     pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -443,7 +408,9 @@ function createPeer() {
 async function openCamera() {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        document.getElementById("localVideo").srcObject = localStream;
+        const localVid = document.getElementById("localVideo");
+        localVid.srcObject = localStream;
+        document.getElementById("callUI").style.display = "flex";
     } catch (err) {
         alert("Camera/mic access failed — make sure you're on HTTPS and permissions are allowed");
         console.log(err);
@@ -458,15 +425,13 @@ function endCall() {
 function cleanupCall() {
     if (peer) { peer.close(); peer = null; }
     if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-    
     const localVid = document.getElementById("localVideo");
     const remoteVid = document.getElementById("remoteVideo");
-    
     if (localVid) { localVid.pause(); localVid.srcObject = null; }
     if (remoteVid) { remoteVid.pause(); remoteVid.srcObject = null; }
-    
     document.getElementById("callUI").style.display = "none";
     currentCallTargetSocketId = "";
+    pendingCandidates = [];
 }
 </script>
 </body>
