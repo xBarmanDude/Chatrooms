@@ -221,10 +221,13 @@ function renderMessage(name, msg, isMe, time, id) {
     const div = document.createElement("div");
     div.setAttribute("data-id", id || "");
 
-    // Cloudinary path classification
-    const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/");
+    // 1. Identify file types accurately
     const isVideo = msg.includes("cloudinary.com") && msg.includes("/video/upload/");
-    const isDoc = msg.includes("cloudinary.com") && msg.includes("/raw/upload/");
+    const isPdf = msg.toLowerCase().includes(".pdf");
+    // Only treat as an image if it's NOT a PDF
+    const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/") && !isPdf;
+    // Treat as doc if it's a raw upload OR a PDF
+    const isDoc = (msg.includes("cloudinary.com") && msg.includes("/raw/upload/")) || isPdf;
 
     const deleteBtn = isMe ? `<button class="actionBtn deleteBtn" onclick="deleteMessage('${id}', this)" title="Delete">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
@@ -244,13 +247,16 @@ function renderMessage(name, msg, isMe, time, id) {
         mediaContent = `<video controls style="max-width:280px;border-radius:12px;display:block;margin-top:4px;"><source src="${msg}"></video>`;
         bubbleClass = "msg msg-media-wrapper"; 
     } else if (isDoc) {
-        // Extract filename and determine layout rule
+        // Extract filename out of the Cloudinary URL
         const rawName = msg.split('/').pop();
-        const fileName = rawName.substring(rawName.indexOf('_') + 1); // Strips unique Cloudinary prefixes if present
+        const fileName = rawName.substring(rawName.indexOf('_') + 1); 
+        
+        // Dynamic icon based on extension
+        const icon = isPdf ? "📕" : "📄";
         
         mediaContent = `
             <a href="${msg}" target="_blank" class="doc-card">
-                <div class="doc-icon-frame">📄</div>
+                <div class="doc-icon-frame">${icon}</div>
                 <div class="doc-meta">
                     <div class="doc-name">${fileName}</div>
                     <div class="doc-desc">Click to view/download</div>
