@@ -119,10 +119,16 @@ io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("joinRoom", async (room) => {
-        socket.join(room);
-        const messages = await Message.find({ room, isDM: false }).sort({ time: 1 }).limit(50);
-        socket.emit("loadMessages", messages);
-    });
+    // If the room name provided is 'general', explicitly query for that
+    const targetRoom = room || "general";
+    socket.join(targetRoom);
+    
+    // Fetch messages where room is explicitly 'general'
+    const messages = await Message.find({ room: targetRoom, isDM: false })
+                                  .sort({ time: 1 })
+                                  .limit(50);
+    socket.emit("loadMessages", messages);
+});
 
     socket.on("getLastSeen", async () => {
         const users = await User.find({}, "username lastSeen").lean();
@@ -169,15 +175,21 @@ socket.on("dm", async (data) => {
     io.to(dmRoom).emit("message", newMsg);
 });
 
-// Update the General message handler
 socket.on("message", async (data) => {
-    if (!data?.room || !data?.msg || !data?.name) return;
+    // Force the room to be "general" to ensure consistency
+    const room = "general"; 
     
-    // Save and capture
-    const newMsg = await Message.create({ name: data.name, msg: data.msg, room: data.room, isDM: false });
-    
-    // Emit the full object
-    io.to(data.room).emit("message", newMsg);
+    if (!data?.msg || !data?.name) return;
+
+    const newMsg = await Message.create({ 
+        name: data.name, 
+        msg: data.msg, 
+        room: room, // Save as 'general'
+        isDM: false 
+    });
+
+    // Emit to everyone in the 'general' room
+    io.to(room).emit("message", newMsg);
 });
 
     socket.on("deleteMessage", async (data) => {

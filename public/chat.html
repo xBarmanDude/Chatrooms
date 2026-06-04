@@ -49,7 +49,9 @@ fetch("/session")
     .then(data => {
         username = data.username;
         socket.emit("userOnline", username);
-        socket.emit("joinRoom", currentRoom);
+        // Ensure we join 'general' explicitly
+        currentRoom = "general";
+        socket.emit("joinRoom", currentRoom); 
         loadUsers();
     });
 
