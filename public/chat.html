@@ -292,7 +292,8 @@ function renderMessage(name, msg, isMe, time, id) {
             <div class="msgRow">
                 <div class="msgActions meActions">${copyBtn}${deleteBtn}</div>
                 <div class="bubbleCol">
-                    <div class="${bubbleClass} me">${mediaContent}<span class="msgTime">${time}</span></div>
+                    <div class="${bubbleClass} me">${mediaContent}</div>
+                    <span class="msgTime">${time}</span>
                 </div>
             </div>`;
     } else {
@@ -302,7 +303,8 @@ function renderMessage(name, msg, isMe, time, id) {
                 <div class="avatarCircle">${initials}</div>
                 <div class="bubbleCol">
                     <div class="senderName">${name}</div>
-                    <div class="${bubbleClass}">${mediaContent}<span class="msgTime">${time}</span></div>
+                    <div class="${bubbleClass}">${mediaContent}</div>
+                    <span class="msgTime">${time}</span>
                 </div>
                 <div class="msgActions themActions">${copyBtn}</div>
             </div>`;
