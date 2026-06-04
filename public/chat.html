@@ -3,10 +3,31 @@
 <head>
     <title>Chat Rooms</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Ensuring your video layout looks beautiful inside your popup widget */
+        #videoContainer {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            height: 160px;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+        .video-box {
+            flex: 1;
+            width: 50%;
+            height: 100%;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #222;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+    </style>
 </head>
 <body>
 <div id="appContainer">
 
+    <!-- SIDEBAR -->
     <div id="sidebar">
         <div id="sidebarHeader">💬 Chat Rooms</div>
         <div class="sidebarItem active" onclick="switchToGeneral()">🌐 General</div>
@@ -15,6 +36,7 @@
         <div id="logoutBtn" onclick="window.location.href='/logout'">🚪 Logout</div>
     </div>
 
+    <!-- MAIN -->
     <div id="main">
         <div id="chatHeader">🌐 General</div>
         <div id="chat"></div>
@@ -28,6 +50,7 @@
     </div>
 </div>
 
+<!-- INCOMING CALL POPUP -->
 <div id="callPopup">
     <div id="callText">Incoming call...</div>
     <div id="callPopupBtns">
@@ -36,16 +59,20 @@
     </div>
 </div>
 
+<!-- NATIVE CALL UI -->
 <div id="callUI">
     <div id="callUIHeader">
         <span id="callUILabel">📹 In Call</span>
         <button class="endCallBtn" onclick="endCall()">End Call</button>
     </div>
-    <div id="videoContainer"></div>
+    <div id="videoContainer">
+        <!-- Pure native HTML5 video tracks -->
+        <video id="localVideo" class="video-box" autoplay playsinline muted></video>
+        <video id="remoteVideo" class="video-box" autoplay playsinline></video>
+    </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script src="https://meet.jit.si/external_api.js"></script>
 <script>
 const socket = io();
 let username = "";
@@ -56,11 +83,27 @@ let lastDateLabel = "";
 let unreadCounts = {};
 let onlineUsers = [];
 let lastSeenData = {};
-let pendingCandidates = [];
 
-// ── JITSI CALL STATE ──
-let jitsiAPI = null; 
+// ── NATIVE WEBRTC STATE + HOTSPOT FIREWALL BYPASS (TURN) ──
+let localStream = null;
+let peerConnection = null;
 let currentCallTargetSocketId = "";
+
+const iceConfiguration = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' }, // Maps local ports
+        {
+            // Free Cloud TURN Relay infrastructure to bypass Hotspot CGNAT restrictions
+            urls: [
+                'turn:openrelay.metered.ca:80',
+                'turn:openrelay.metered.ca:443',
+                'turns:openrelay.metered.ca:443?transport=tcp'
+            ],
+            username: 'openrelayprojectsecret',
+            credential: 'openrelayprojectsecret'
+        }
+    ]
+};
 
 fetch("/session")
     .then(r => r.json())
@@ -275,34 +318,34 @@ document.getElementById("imageInput").addEventListener("change", async function 
     this.value = "";
 });
 
-// ── FREE JITSI MEET CALL CORE ──
 
-function initJitsiCall(roomName) {
-    document.getElementById("videoContainer").innerHTML = ""; // Clear container
+// ── PURE NATIVE WEBRTC SIGNALING LOGIC ──
+
+async function setupMedia() {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    document.getElementById("localVideo").srcObject = localStream;
+}
+
+function createPeerConnection() {
+    peerConnection = new RTCPeerConnection(iceConfiguration);
     
-    const domain = "meet.jit.si";
-    const options = {
-        roomName: roomName,
-        width: "100%",
-        height: 180,
-        parentNode: document.getElementById("videoContainer"),
-        configOverwrite: {
-            startWithAudioMuted: false,
-            startWithVideoMuted: false,
-            prejoinPageEnabled: false // Skip annoying settings page, join immediately
-        },
-        interfaceConfigOverwrite: {
-            TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup'], // Keep it compact and clean
-            VIDEO_LAYOUT_FIT: true
+    // Push local mic/camera tracks into connection
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+    // Handle incoming stream from the other laptop
+    peerConnection.ontrack = (event) => {
+        document.getElementById("remoteVideo").srcObject = event.streams[0];
+    };
+
+    // Forward ICE candidates over socket server
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            socket.emit("ice-candidate", {
+                toSocketId: currentCallTargetSocketId,
+                candidate: event.candidate
+            });
         }
     };
-    
-    jitsiAPI = new JitsiMeetExternalAPI(domain, options);
-    
-    // Wire up container widget close when hangup clicked inside Jitsi interface
-    jitsiAPI.addEventListener('videoConferenceLeft', () => {
-        cleanupCall();
-    });
 }
 
 async function startCall() {
@@ -310,26 +353,25 @@ async function startCall() {
         alert("Open a DM first to call");
         return;
     }
-
     document.getElementById("callUI").style.display = "flex";
+    
+    await setupMedia();
+    createPeerConnection();
 
-    // Generate a unique, unguessable room string for this DM session
-    const secureRoomName = "room_" + [username, dmTarget].sort().join("_") + "_" + Math.floor(Math.random() * 10000);
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
 
-    initJitsiCall(secureRoomName);
-
-    // Send the room ID to the target user via socket connection
     socket.emit("call-user", {
         to: dmTarget,
         from: username,
-        offer: secureRoomName, 
+        offer: offer,
         fromSocketId: socket.id
     });
 }
 
-socket.on("incoming-call", ({ from, offer, fromSocketId }) => {
+socket.on("incoming-call", async ({ from, offer, fromSocketId }) => {
     currentCallTargetSocketId = fromSocketId;
-    window.pendingJitsiRoom = offer; // Store room name temporary
+    window.pendingOffer = offer;
     document.getElementById("callText").innerText = "📞 Incoming call from " + from;
     document.getElementById("callPopup").style.display = "flex";
 });
@@ -338,24 +380,36 @@ async function acceptCall() {
     document.getElementById("callPopup").style.display = "none";
     document.getElementById("callUI").style.display = "flex";
 
-    // Launch into the caller's room name
-    initJitsiCall(window.pendingJitsiRoom);
-    
-    socket.emit("call-accepted", { toSocketId: currentCallTargetSocketId, answer: "accepted" });
+    await setupMedia();
+    createPeerConnection();
+
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(window.pendingOffer));
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+
+    socket.emit("call-accepted", {
+        toSocketId: currentCallTargetSocketId,
+        answer: answer
+    });
 }
+
+socket.on("call-accepted", async ({ answer }) => {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+});
+
+socket.on("ice-candidate", async ({ candidate }) => {
+    if (peerConnection) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+});
 
 function rejectCall() {
     document.getElementById("callPopup").style.display = "none";
     socket.emit("end-call", { toSocketId: currentCallTargetSocketId });
 }
 
-socket.on("call-accepted", ({ answer }) => {
-    console.log("Jitsi call connection approved!");
-});
-
 socket.on("call-ended", () => cleanupCall());
 socket.on("call-target-id", ({ targetSocketId }) => { currentCallTargetSocketId = targetSocketId; });
-socket.on("ice-candidate", () => {}); // Handlers ignored now since Jitsi maps network natively
 
 function endCall() {
     socket.emit("end-call", { toSocketId: currentCallTargetSocketId });
@@ -363,11 +417,16 @@ function endCall() {
 }
 
 function cleanupCall() {
-    if (jitsiAPI) {
-        jitsiAPI.dispose();
-        jitsiAPI = null;
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
     }
-    document.getElementById("videoContainer").innerHTML = "";
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+    }
+    document.getElementById("localVideo").srcObject = null;
+    document.getElementById("remoteVideo").srcObject = null;
     document.getElementById("callUI").style.display = "none";
     currentCallTargetSocketId = "";
 }
