@@ -258,13 +258,32 @@ function sendMessage() {
     if (!input.value.trim()) return;
     insertDateDivider(getDateLabel(new Date()));
     renderMessage(username, input.value, true);
-    if (isDM) socket.emit("dm", {
-    from: username,
-    to: dmTarget,
-    msg: input.value
-});
-    else socket.emit("message", { name: username, msg: input.value, room: currentRoom });
-    input.value = "";
+    if (isDM) {
+    console.log("SENDING DM", {
+        from: username,
+        to: dmTarget,
+        msg: input.value
+    });
+
+    socket.emit("dm", {
+        from: username,
+        to: dmTarget,
+        msg: input.value
+    });
+}
+else {
+    console.log("SENDING GENERAL", {
+        name: username,
+        msg: input.value,
+        room: currentRoom
+    });
+
+    socket.emit("message", {
+        name: username,
+        msg: input.value,
+        room: currentRoom
+    });
+}
 }
 
 // ── FILE UPLOAD ──
