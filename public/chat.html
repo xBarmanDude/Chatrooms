@@ -23,7 +23,9 @@
         <div id="inputBox">
             <input type="file" id="imageInput" accept="image/*,video/*" style="display:none">
             <button class="attachBtn" onclick="document.getElementById('imageInput').click()">📎</button>
-            <input id="msg" placeholder="Type message..." onkeydown="if(event.key==='Enter') sendMessage()">
+            <input id="msg" placeholder="Type message..." 
+       oninput="socket.emit('typing', { to: dmTarget })" 
+       onkeydown="if(event.key==='Enter') sendMessage()">
             <button class="callBtn" onclick="startJitsiCall()" title="Start video call">📞</button>
             <button class="sendBtn" onclick="sendMessage()">➤</button>
         </div>
@@ -286,6 +288,21 @@ function startJitsiCall() {
         "_blank"
     );
 }
+
+socket.on("userTyping", (data) => {
+    const header = document.getElementById("chatHeader");
+    const originalText = header.innerText; // Remember "💌 Username"
+    
+    // Only show if we are actually in the DM with that person
+    if (isDM && dmTarget === data.from) {
+        header.innerText = "Typing...";
+        
+        // Change it back to the name after 2 seconds
+        setTimeout(() => { 
+            header.innerText = originalText; 
+        }, 2000);
+    }
+});
 
 </script>
 </body>

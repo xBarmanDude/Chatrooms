@@ -111,6 +111,15 @@ const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
 
+    socket.on("typing", (data) => {
+    // data.to is the username of the person being typed to
+    const targetSocketId = userSocketMap.get(data.to);
+    if (targetSocketId) {
+        // Send to that specific user, letting them know WHO is typing
+        io.to(targetSocketId).emit("userTyping", { from: onlineUsers.get(socket.id) });
+    }
+});
+
     socket.on("userOnline", (username) => {
         userSocketMap.set(username, socket.id);
 onlineUsers.set(socket.id, username);
