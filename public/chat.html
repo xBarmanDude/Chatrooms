@@ -40,7 +40,7 @@
         <div id="chat"></div>
         <div id="inputArea">
             <div id="inputBox">
-                <input type="file" id="imageInput" accept="image/*,video/*" style="display:none">
+                <input type="file" id="imageInput" style="display:none">
                 <button class="attachBtn" onclick="document.getElementById('imageInput').click()" title="Attach file">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                 </button>
@@ -220,19 +220,45 @@ function renderMessage(name, msg, isMe, time, id) {
     time = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const div = document.createElement("div");
     div.setAttribute("data-id", id || "");
+
+    // Cloudinary automatically sorts into image, video, or raw (for documents)
     const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/");
     const isVideo = msg.includes("cloudinary.com") && msg.includes("/video/upload/");
+    const isDoc = msg.includes("cloudinary.com") && msg.includes("/raw/upload/");
+
     const deleteBtn = isMe ? `<button class="actionBtn deleteBtn" onclick="deleteMessage('${id}', this)" title="Delete">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
     </button>` : "";
-    const copyBtn = !isImage && !isVideo ? `<button class="actionBtn copyBtn" onclick="copyMessage(this)" title="Copy">
+    
+    // Hide copy button for images, videos, AND documents
+    const copyBtn = (!isImage && !isVideo && !isDoc) ? `<button class="actionBtn copyBtn" onclick="copyMessage(this)" title="Copy">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
     </button>` : "";
-    const mediaContent = isImage
-        ? `<img src="${msg}" style="max-width:280px;border-radius:12px;display:block;margin-top:4px;">`
-        : isVideo
-        ? `<video controls style="max-width:280px;border-radius:12px;display:block;margin-top:4px;"><source src="${msg}"></video>`
-        : `<div class="text">${msg}</div>`;
+
+    let mediaContent = "";
+    let bubbleClass = "msg"; // Standard bubble background
+
+    if (isImage) {
+        mediaContent = `<img src="${msg}" style="max-width:280px;border-radius:12px;display:block;">`;
+        bubbleClass = "msg msg-media-wrapper"; // Removes boxy borders
+    } else if (isVideo) {
+        mediaContent = `<video controls style="max-width:280px;border-radius:12px;display:block;"><source src="${msg}"></video>`;
+        bubbleClass = "msg msg-media-wrapper"; // Removes boxy borders
+    } else if (isDoc) {
+        const fileName = msg.split('/').pop(); // Extract filename from URL
+        mediaContent = `
+            <a href="${msg}" target="_blank" class="doc-card">
+                <span style="font-size:24px;">📄</span>
+                <div style="overflow:hidden; min-width:0;">
+                    <div style="font-size:14px; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${fileName}</div>
+                    <div style="font-size:11px; opacity:0.5;">Download File</div>
+                </div>
+            </a>`;
+        bubbleClass = "msg msg-media-wrapper"; // Removes boxy borders
+    } else {
+        mediaContent = `<div class="text">${msg}</div>`;
+    }
+
     const initials = name.slice(0, 2).toUpperCase();
 
     if (isMe) {
@@ -241,7 +267,7 @@ function renderMessage(name, msg, isMe, time, id) {
             <div class="msgRow">
                 <div class="msgActions meActions">${copyBtn}${deleteBtn}</div>
                 <div class="bubbleCol">
-                    <div class="msg me">${mediaContent}<span class="msgTime">${time}</span></div>
+                    <div class="${bubbleClass} me">${mediaContent}<span class="msgTime">${time}</span></div>
                 </div>
             </div>`;
     } else {
@@ -251,11 +277,12 @@ function renderMessage(name, msg, isMe, time, id) {
                 <div class="avatarCircle">${initials}</div>
                 <div class="bubbleCol">
                     <div class="senderName">${name}</div>
-                    <div class="msg">${mediaContent}<span class="msgTime">${time}</span></div>
+                    <div class="${bubbleClass}">${mediaContent}<span class="msgTime">${time}</span></div>
                 </div>
                 <div class="msgActions themActions">${copyBtn}</div>
             </div>`;
     }
+    
     const chat = document.getElementById("chat");
     const isAtBottom = chat.scrollHeight - chat.scrollTop <= chat.clientHeight + 120;
     chat.appendChild(div);

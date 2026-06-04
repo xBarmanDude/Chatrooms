@@ -566,5 +566,41 @@ body {
 #authBox button:hover { background: #00b248; transform: scale(1.02); }
 #authBox button:active { transform: scale(0.98); }
 
+/* ── MEDIA & DOCUMENTS ── */
+.msg-media-wrapper {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Give the timestamp a nice background since it won't have the bubble behind it */
+.msg-media-wrapper .msgTime {
+    display: inline-block;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-top: 6px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.doc-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 12px 16px;
+    border-radius: 16px;
+    text-decoration: none;
+    color: #fff;
+    max-width: 250px;
+    transition: background 0.2s;
+}
+
+.doc-card:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 /* ── SCROLLBAR GLOBAL ── */
 * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
