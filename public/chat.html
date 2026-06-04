@@ -406,31 +406,27 @@ function createPeer() {
     }
 
     pc.ontrack = (event) => {
-        console.log("TRACK RECEIVED FROM REMOTE:", event.streams);
-        const remoteStream = event.streams[0];
-        if (!remoteStream) return;
-
-        const video = document.getElementById("remoteVideo");
-        
-        if (video.srcObject && video.srcObject.id === remoteStream.id) {
-            console.log("Stream already coupled. Dropping duplicate track event.");
-            return;
-        }
-        
-        video.srcObject = remoteStream;
-        
-        video.play()
-            .then(() => console.log("Direct playback successful!"))
-            .catch((err) => {
-                console.log("Autoplay flagged. Applying stable hardware bypass...", err);
-                video.muted = true;
-                video.play()
-                    .then(() => {
-                        setTimeout(() => { video.muted = false; }, 200);
-                    })
-                    .catch(e => console.error("Hardware engine rejected track:", e));
-            });
+    console.log("TRACK RECEIVED:", event.track.kind, "stream active:", event.streams[0]?.active);
+    
+    const video = document.getElementById("remoteVideo");
+    
+    if (!video.srcObject) {
+        video.srcObject = event.streams[0];
+    }
+    
+    event.streams[0].onactive = () => {
+        console.log("Stream became active!");
+        video.srcObject = event.streams[0];
+        video.muted = false;
+        video.play().catch(e => console.log("Play error:", e));
     };
+    
+    // Also try directly in case it's already active
+    if (event.streams[0].active) {
+        video.srcObject = event.streams[0];
+        video.play().catch(e => {});
+    }
+};
 
     pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -466,8 +462,8 @@ function cleanupCall() {
     const localVid = document.getElementById("localVideo");
     const remoteVid = document.getElementById("remoteVideo");
     
-    if (localVid) localVid.srcObject = null;
-    if (remoteVid) remoteVid.srcObject = null;
+    if (localVid) { localVid.pause(); localVid.srcObject = null; }
+    if (remoteVid) { remoteVid.pause(); remoteVid.srcObject = null; }
     
     document.getElementById("callUI").style.display = "none";
     currentCallTargetSocketId = "";
