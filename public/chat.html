@@ -111,16 +111,14 @@ function switchToGeneral() {
 }
 
 function openDM(target, el) {
-    isDM = true;
-    dmTarget = target;
-    lastDateLabel = "";
-    document.getElementById("chat").innerHTML = "";
-    document.getElementById("chatHeader").innerText = "💌 " + target;
-    document.querySelectorAll(".sidebarItem").forEach(i => i.classList.remove("active"));
-    el.classList.add("active");
-    unreadCounts[target] = 0;
+    
+    unreadCounts[target] = 0; // Reset counter
     const badge = document.getElementById("badge-" + target);
-    if (badge) badge.style.display = "none";
+    if (badge) {
+        badge.innerText = "0";
+        badge.style.display = "none"; // Hide the badge
+    }
+    
     socket.emit("joinDM", { from: username, to: target });
 }
 
@@ -166,14 +164,24 @@ socket.on("loadMessages", (messages) => {
 });
 
 socket.on("message", (data) => {
-    // Check if the message is already rendered (by ID)
     if (document.querySelector(`[data-id="${data._id}"]`)) return;
 
-    // Filter by Room/DM
     const isDM = data.isDM;
-    if (isDM && (!isDM || (dmTarget !== data.name && dmTarget !== data.to))) return;
-    if (!isDM && currentRoom !== data.room) return;
+    // If it's a DM and we aren't looking at that specific chat
+    if (isDM && (dmTarget !== data.name && dmTarget !== data.to)) {
+        // Increment the badge counter
+        const sender = data.name;
+        unreadCounts[sender] = (unreadCounts[sender] || 0) + 1;
+        
+        const badge = document.getElementById("badge-" + sender);
+        if (badge) {
+            badge.style.display = "inline-block";
+            badge.innerText = unreadCounts[sender];
+        }
+        return; // Don't render the message yet
+    }
 
+    // ... existing rendering logic for general/active DM ...
     insertDateDivider(getDateLabel(data.time || new Date()));
     renderMessage(data.name, data.msg, data.name === username, null, data._id);
 });
