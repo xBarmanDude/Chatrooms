@@ -180,18 +180,28 @@ socket.on("loadMessages", (messages) => {
 
 socket.on("message", (data) => {
     console.log("MESSAGE RECEIVED:", data);
-    if (data.senderId !== socket.id) {
+
+    // 1. IGNORE SELF MESSAGES
+    if (data.senderId === socket.id) return;
+
+    // 2. GENERAL CHAT FILTER
+    if (!data.isDM) {
+        if (currentRoom !== "general") return;
+
         insertDateDivider(getDateLabel(new Date()));
         renderMessage(data.name, data.msg, false);
-        if (isDM && dmTarget !== data.name) {
-            unreadCounts[data.name] = (unreadCounts[data.name] || 0) + 1;
-            const badge = document.getElementById("badge-" + data.name);
-            if (badge) { badge.innerText = unreadCounts[data.name]; badge.style.display = "inline-block"; }
-        } else if (!isDM && data.isDM) {
-            unreadCounts[data.name] = (unreadCounts[data.name] || 0) + 1;
-            const badge = document.getElementById("badge-" + data.name);
-            if (badge) { badge.innerText = unreadCounts[data.name]; badge.style.display = "inline-block"; }
-        }
+        return;
+    }
+
+    // 3. DM FILTER
+    if (data.isDM) {
+        if (!isDM) return;
+
+        // ONLY SHOW IF THIS DM MATCHES CURRENT CHAT
+        if (dmTarget !== data.name && dmTarget !== data.to) return;
+
+        insertDateDivider(getDateLabel(new Date()));
+        renderMessage(data.name, data.msg, false);
     }
 });
 
