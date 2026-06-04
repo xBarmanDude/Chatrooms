@@ -24,7 +24,7 @@
             <input type="file" id="imageInput" accept="image/*,video/*" style="display:none">
             <button class="attachBtn" onclick="document.getElementById('imageInput').click()">📎</button>
             <input id="msg" placeholder="Type message..." onkeydown="if(event.key==='Enter') sendMessage()">
-            <button class="callBtn" onclick="startCall()" title="Start video call">📞</button>
+            <button class="callBtn" onclick="startJitsiCall()" title="Start video call">📞</button>
             <button class="sendBtn" onclick="sendMessage()">➤</button>
         </div>
     </div>
@@ -52,6 +52,7 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://meet.jit.si/external_api.js"></script>
 <script>
 const socket = io();
 let username = "";
@@ -456,6 +457,22 @@ async function openCamera() {
 function endCall() {
     socket.emit("end-call", { toSocketId: currentCallTargetSocketId });
     cleanupCall();
+}
+
+function startJitsiCall() {
+    if (!isDM || !dmTarget) {
+        alert("Open a DM first");
+        return;
+    }
+
+    const roomName = ["chatapp", username, dmTarget]
+        .sort()
+        .join("-");
+
+    window.open(
+        `https://meet.jit.si/${roomName}`,
+        "_blank"
+    );
 }
 
 function cleanupCall() {
