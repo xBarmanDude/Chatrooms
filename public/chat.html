@@ -69,9 +69,8 @@ function loadUsers() {
                 const isOnline = onlineUsers.includes(u.username);
                 let statusText = isOnline ? "Online" : "Offline";
                 if (!isOnline && lastSeenData[u.username]) {
-                    const mins = Math.floor((Date.now() - new Date(lastSeenData[u.username]).getTime()) / 60000);
-                    statusText = mins < 1 ? "Last seen just now" : mins === 1 ? "Last seen 1 min ago" : `Last seen ${mins} mins ago`;
-                }
+    statusText = formatLastSeen(lastSeenData[u.username]);
+}
                 div.innerHTML = `
                     <div>
                         <div>${isOnline ? "🟢" : "⚫"} ${u.username}</div>
@@ -132,6 +131,16 @@ function getDateLabel(dateStr) {
     if (d.toDateString() === today.toDateString()) return "Today";
     if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
     return d.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+}
+
+function formatLastSeen(dateStr) {
+    if (!dateStr) return "Offline";
+    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000); 
+
+    if (diff < 60) return "Last seen just now";
+    if (diff < 3600) return `Last seen ${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `Last seen ${Math.floor(diff / 3600)}h ago`;
+    return `Last seen ${Math.floor(diff / 86400)}d ago`;
 }
 
 function insertDateDivider(dateLabel) {
