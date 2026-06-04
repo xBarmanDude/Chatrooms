@@ -369,22 +369,31 @@ socket.on("call-target-id", ({ targetSocketId }) => {
 });
 
 function createPeer() {
-    const pc = new RTCPeerConnection({
-        iceTransportPolicy: "all", 
-        bundlePolicy: "max-bundle", 
-        rtcpMuxPolicy: "require",
-        iceServers: [
-            // 1. Local network fallback
-            { urls: "stun:stun.l.google.com:19302" },
-            
-            // 2. Encrypted TURNS over TCP Port 443 (The Jio Bypass)
-            {
-                urls: "turns:global.relay.metered.ca:443?transport=tcp",
-                username: "701acf6c481f2350081869a7",
-                credential: "ASPxdqlRB2ze3o/g"
-            }
-        ]
-    });
+    const peerConfiguration = {
+  iceServers: [
+    {
+      urls: "stun:openrelay.metered.ca:80"
+    },
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "701acf6c481f2350081869a7",
+      credential: "ASPxdqlRB2ze3o/g"
+    },
+    // Add these explicit TCP and TLS fallbacks:
+    {
+      urls: "turn:openrelay.metered.ca:443?transport=tcp",
+      username: "701acf6c481f2350081869a7",
+      credential: "ASPxdqlRB2ze3o/g"
+    },
+    {
+      urls: "turns:openrelay.metered.ca:443?transport=tcp",
+      username: "701acf6c481f2350081869a7",
+      credential: "ASPxdqlRB2ze3o/g"
+    }
+  ],
+  iceTransportPolicy: "relay" // Force TURN during your testing phases
+};
+
 
     // AUTO-CLEANUP FIX: Detect if the internet drops and end the call cleanly
     pc.oniceconnectionstatechange = () => {
