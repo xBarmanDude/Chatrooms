@@ -378,7 +378,8 @@ socket.on("call-target-id", ({ targetSocketId }) => {
 
 function createPeer() {
     const pc = new RTCPeerConnection({
-        iceServers: [
+    iceTransportPolicy: "relay",
+    iceServers: [
   { urls: "stun:stun.relay.metered.ca:80" },
 
   {
@@ -424,7 +425,13 @@ function createPeer() {
 };
 
     pc.onicecandidate = (event) => {
-    console.log("ICE GENERATED:", event.candidate);
+    console.log(
+        "ICE GENERATED",
+        "TARGET:",
+        currentCallTargetSocketId,
+        event.candidate
+    );
+
     if (event.candidate) {
         socket.emit("ice-candidate", {
             toSocketId: currentCallTargetSocketId,
@@ -432,8 +439,7 @@ function createPeer() {
         });
     }
 };
-
-    return pc;
+return pc;
 }
 
 async function openCamera() {
