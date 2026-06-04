@@ -374,18 +374,25 @@ function createPeer() {
         bundlePolicy: "max-bundle", 
         rtcpMuxPolicy: "require",
         iceServers: [
-            // 1. Add Google's reliable STUN server first for instant local connections
+            // 1. Google & Twilio STUN for fast local network checks
             { urls: "stun:stun.l.google.com:19302" },
-            // 2. Keep Metered TURN servers as fallback for strict networks
+            { urls: "stun:global.stun.twilio.com:3478" },
+            
+            // 2. Public Open Relay TURN Servers (No account limits)
             {
-                urls: "turn:global.relay.metered.ca:80",
-                username: "701acf6c481f2350081869a7",
-                credential: "ASPxdqlRB2ze3o/g"
+                urls: "turn:openrelay.metered.ca:80",
+                username: "openrelayproject",
+                credential: "openrelayproject"
             },
             {
-                urls: "turn:global.relay.metered.ca:443?transport=tcp",
-                username: "701acf6c481f2350081869a7",
-                credential: "ASPxdqlRB2ze3o/g"
+                urls: "turn:openrelay.metered.ca:443",
+                username: "openrelayproject",
+                credential: "openrelayproject"
+            },
+            {
+                urls: "turn:openrelay.metered.ca:443?transport=tcp",
+                username: "openrelayproject",
+                credential: "openrelayproject"
             }
         ]
     });
