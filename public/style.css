@@ -344,14 +344,6 @@ body {
     max-width: 65%;
 }
 
-.msgTime {
-    display: block;
-    font-size: 10px;
-    opacity: 0.45;
-    margin-top: 4px;
-    text-align: right;
-}
-
 /* ── INPUT ── */
 #inputArea {
     padding: 12px 24px 16px;
