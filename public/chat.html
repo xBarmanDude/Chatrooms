@@ -221,7 +221,7 @@ function renderMessage(name, msg, isMe, time, id) {
     const div = document.createElement("div");
     div.setAttribute("data-id", id || "");
 
-    // Cloudinary automatically sorts into image, video, or raw (for documents)
+    // Cloudinary path classification
     const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/");
     const isVideo = msg.includes("cloudinary.com") && msg.includes("/video/upload/");
     const isDoc = msg.includes("cloudinary.com") && msg.includes("/raw/upload/");
@@ -230,31 +230,33 @@ function renderMessage(name, msg, isMe, time, id) {
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
     </button>` : "";
     
-    // Hide copy button for images, videos, AND documents
     const copyBtn = (!isImage && !isVideo && !isDoc) ? `<button class="actionBtn copyBtn" onclick="copyMessage(this)" title="Copy">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
     </button>` : "";
 
     let mediaContent = "";
-    let bubbleClass = "msg"; // Standard bubble background
+    let bubbleClass = "msg"; 
 
     if (isImage) {
-        mediaContent = `<img src="${msg}" style="max-width:280px;border-radius:12px;display:block;">`;
-        bubbleClass = "msg msg-media-wrapper"; // Removes boxy borders
+        mediaContent = `<img src="${msg}" style="max-width:280px;border-radius:12px;display:block;margin-top:4px;">`;
+        bubbleClass = "msg msg-media-wrapper"; 
     } else if (isVideo) {
-        mediaContent = `<video controls style="max-width:280px;border-radius:12px;display:block;"><source src="${msg}"></video>`;
-        bubbleClass = "msg msg-media-wrapper"; // Removes boxy borders
+        mediaContent = `<video controls style="max-width:280px;border-radius:12px;display:block;margin-top:4px;"><source src="${msg}"></video>`;
+        bubbleClass = "msg msg-media-wrapper"; 
     } else if (isDoc) {
-        const fileName = msg.split('/').pop(); // Extract filename from URL
+        // Extract filename and determine layout rule
+        const rawName = msg.split('/').pop();
+        const fileName = rawName.substring(rawName.indexOf('_') + 1); // Strips unique Cloudinary prefixes if present
+        
         mediaContent = `
             <a href="${msg}" target="_blank" class="doc-card">
-                <span style="font-size:24px;">📄</span>
-                <div style="overflow:hidden; min-width:0;">
-                    <div style="font-size:14px; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${fileName}</div>
-                    <div style="font-size:11px; opacity:0.5;">Download File</div>
+                <div class="doc-icon-frame">📄</div>
+                <div class="doc-meta">
+                    <div class="doc-name">${fileName}</div>
+                    <div class="doc-desc">Click to view/download</div>
                 </div>
             </a>`;
-        bubbleClass = "msg msg-media-wrapper"; // Removes boxy borders
+        bubbleClass = "msg msg-media-wrapper"; 
     } else {
         mediaContent = `<div class="text">${msg}</div>`;
     }
