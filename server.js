@@ -108,11 +108,9 @@ app.post("/upload", upload.single("image"), async (req, res) => {
         const mimeType = req.file.mimetype;
         let resourceType = "auto";
 
-        // If the file is NOT an image, video, or audio, force it to be a "raw" resource type.
-        // This stops Cloudinary from treating PDFs as images, fixing the browser load error.
         if (!mimeType.startsWith("image/") && !mimeType.startsWith("video/") && !mimeType.startsWith("audio/")) {
             resourceType = "raw";
-            customPublicId += ext; // CRUCIAL: Raw assets must retain their extensions in the public_id
+            customPublicId += ext;
         }
 
         const result = await new Promise((resolve, reject) => {
