@@ -656,10 +656,23 @@ body {
 }
 
 /* ── ACTION BUTTONS MEDIAL POSITIONING ── */
+/* ── HOVER ACTIONS EFFECT ── */
+
 .msgActions {
     display: flex;
     gap: 4px;
     align-items: center;
+    
+    /* 1. Hide them by default with a smooth fade setup */
+    opacity: 0;
+    pointer-events: none; /* Disables clicking while invisible */
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* 2. Reveal them smoothly when hovering anywhere over the message wrapper */
+.messageWrapper:hover .msgActions {
+    opacity: 1;
+    pointer-events: auto; /* Re-enables clicking when visible */
 }
 
 /* Spaces your buttons perfectly to the left (inner side) of your bubble */
