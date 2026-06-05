@@ -98,59 +98,7 @@
 <div id="toast"></div>
 
 <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
-<script>
-    const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
-    let localTracks = { videoTrack: null, audioTrack: null };
-    let remoteUsers = {};
-
-    async function joinVideoCall(roomId, userId) {
-        const response = await fetch(`/get-agora-token?channel=${roomId}&uid=${userId}`);
-        const data = await response.json();
-
-        await client.join("affd93b1f9d84aa99e304aabe79347e4", roomId, data.token, userId);
-
-        localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-        localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
-
-        const localPlayer = document.createElement("div");
-        localPlayer.id = `user-${userId}`;
-        localPlayer.style.width = "300px";
-        localPlayer.style.height = "200px";
-        document.getElementById("video-streams").appendChild(localPlayer);
-
-        localTracks.videoTrack.play(localPlayer.id);
-
-        await client.publish([localTracks.audioTrack, localTracks.videoTrack]);
-    }
-
-    client.on("user-published", async (user, mediaType) => {
-        await client.subscribe(user, mediaType);
-        remoteUsers[user.uid] = user;
-
-        if (mediaType === "video") {
-            let remotePlayer = document.getElementById(`user-${user.uid}`);
-            if (!remotePlayer) {
-                remotePlayer = document.createElement("div");
-                remotePlayer.id = `user-${user.uid}`;
-                remotePlayer.style.width = "300px";
-                remotePlayer.style.height = "200px";
-                document.getElementById("video-streams").appendChild(remotePlayer);
-            }
-            user.videoTrack.play(remotePlayer.id);
-        }
-
-        if (mediaType === "audio") {
-            user.audioTrack.play();
-        }
-    });
-
-    client.on("user-unpublished", (user) => {
-        const remotePlayer = document.getElementById(`user-${user.uid}`);
-        if (remotePlayer) remotePlayer.remove();
-        delete remoteUsers[user.uid];
-    });
-</script>
 <script>
 const socket = io();
 let username = "";
@@ -162,7 +110,9 @@ let lastDateLabel = "";
 let unreadCounts = {};
 let onlineUsers = [];
 let lastSeenData = {};
-let pendingJitsiRoom = null;
+let localTracks = { videoTrack: null, audioTrack: null };
+let remoteUsers = {};
+let pendingAgoraRoom = null;
 
 fetch("/session")
     .then(r => r.json())
@@ -442,24 +392,114 @@ document.getElementById("imageInput").addEventListener("change", async function 
     this.value = "";
 });
 
-// ── JITSI CALLS ──
-function startJitsiCall() {
+const agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+
+
+const AGORA_APP_ID = "affd93b1f9d84aa99e304aabe79347e4"; 
+
+async function startAgoraCall() {
     if (!isDM || !dmTarget) { showToast("Open a DM first"); return; }
+    
     const roomName = ["chatapp", username, dmTarget].sort().join("-");
+    
     socket.emit("call-invite", { to: dmTarget, from: username, room: roomName });
-    window.open(`https://meet.jit.si/${roomName}`, "_blank");
     showToast("Call started — waiting for " + dmTarget);
+    
+    await joinAgoraRoom(roomName);
 }
 
 socket.on("call-invite", ({ from, room }) => {
-    pendingJitsiRoom = room;
+    pendingAgoraRoom = room;
     document.getElementById("callText").innerText = `📞 ${from} is calling...`;
     document.getElementById("callPopup").style.display = "flex";
 });
 
-function acceptJitsiCall() {
+async function acceptAgoraCall() {
     document.getElementById("callPopup").style.display = "none";
-    if (pendingJitsiRoom) window.open(`https://meet.jit.si/${pendingJitsiRoom}`, "_blank");
+    if (pendingAgoraRoom) {
+        await joinAgoraRoom(pendingAgoraRoom);
+    }
+}
+
+async function joinAgoraRoom(roomName) {
+    try {
+        document.getElementById("videoModal").style.display = "flex";
+        document.getElementById("videoCallTitle").innerText = `In Call: ${roomName.replace("chatapp-", "")}`;
+
+        const response = await fetch(`/get-agora-token?channel=${roomName}&uid=${username}`);
+        const data = await response.json();
+
+        await agoraClient.join(affd93b1f9d84aa99e304aabe79347e4, roomName, data.token, username);
+
+        localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
+
+        const localPlayer = document.createElement("div");
+        localPlayer.id = `user-${username}`;
+        localPlayer.style.width = "320px";
+        localPlayer.style.height = "240px";
+        localPlayer.style.borderRadius = "10px";
+        localPlayer.style.overflow = "hidden";
+        localPlayer.style.background = "#222";
+        document.getElementById("video-streams").appendChild(localPlayer);
+
+        localTracks.videoTrack.play(localPlayer.id);
+
+        await agoraClient.publish([localTracks.audioTrack, localTracks.videoTrack]);
+
+    } catch (err) {
+        console.error("Agora join breakdown:", err);
+        showToast("Failed to connect to video feed");
+        leaveAgoraCall();
+    }
+}
+
+agoraClient.on("user-published", async (user, mediaType) => {
+    await agoraClient.subscribe(user, mediaType);
+    remoteUsers[user.uid] = user;
+
+    if (mediaType === "video") {
+        let remotePlayer = document.getElementById(`user-${user.uid}`);
+        if (!remotePlayer) {
+            remotePlayer = document.createElement("div");
+            remotePlayer.id = `user-${user.uid}`;
+            remotePlayer.style.width = "320px";
+            remotePlayer.style.height = "240px";
+            remotePlayer.style.borderRadius = "10px";
+            remotePlayer.style.overflow = "hidden";
+            remotePlayer.style.background = "#222";
+            document.getElementById("video-streams").appendChild(remotePlayer);
+        }
+        user.videoTrack.play(remotePlayer.id);
+    }
+
+    if (mediaType === "audio") {
+        user.audioTrack.play();
+    }
+});
+
+agoraClient.on("user-unpublished", (user) => {
+    const remotePlayer = document.getElementById(`user-${user.uid}`);
+    if (remotePlayer) remotePlayer.remove();
+    delete remoteUsers[user.uid];
+});
+
+async function leaveAgoraCall() {
+    for (let trackName in localTracks) {
+        if (localTracks[trackName]) {
+            localTracks[trackName].stop();
+            localTracks[trackName].close();
+            localTracks[trackName] = null;
+        }
+    }
+
+    await agoraClient.leave();
+
+    document.getElementById("video-streams").innerHTML = "";
+    document.getElementById("videoModal").style.display = "none";
+    remoteUsers = {};
+    pendingAgoraRoom = null;
+    showToast("Call ended");
 }
 
 function openSettingsModal() {
