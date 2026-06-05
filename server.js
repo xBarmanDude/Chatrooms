@@ -108,9 +108,10 @@ app.post("/upload", upload.single("image"), async (req, res) => {
         const mimeType = req.file.mimetype;
         let resourceType = "auto";
 
+        // Force documents/PDFs to use the 'raw' asset pathway
         if (!mimeType.startsWith("image/") && !mimeType.startsWith("video/") && !mimeType.startsWith("audio/")) {
             resourceType = "raw";
-            customPublicId += ext;
+            customPublicId += ext; // Raw assets MUST keep their extension explicitly inside the public_id
         }
 
         const result = await new Promise((resolve, reject) => {
