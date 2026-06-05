@@ -101,8 +101,16 @@ app.post("/upload", upload.single("image"), async (req, res) => {
         const originalName = req.file.originalname;
         const lastDotIndex = originalName.lastIndexOf(".");
         const nameWithoutExtension = lastDotIndex !== -1 ? originalName.substring(0, lastDotIndex) : originalName;
+        const ext = lastDotIndex !== -1 ? originalName.substring(lastDotIndex) : "";
         const safeName = nameWithoutExtension.replace(/[?&#\\%<>+ ]/g, "-");
         const customPublicId = Date.now() + "_" + safeName;
+        const mimeType = req.file.mimetype;
+        let resourceType = "auto";
+
+        if (!mimeType.startsWith("image/") && !mimeType.startsWith("video/") && !mimeType.startsWith("audio/")) {
+            resourceType = "raw";
+            customPublicId += ext;
+        }
 
         const result = await new Promise((resolve, reject) => {
             cloudinary.uploader.upload_stream(
