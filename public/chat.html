@@ -19,13 +19,13 @@
         <div class="sectionLabel">DIRECT MESSAGES</div>
         <div id="userList"></div>
         <div id="sidebarBottom">
-    <div id="settingsBtn" onclick="openSettingsModal()">
-        <span>⚙️</span> Settings
-    </div>
-    <div id="logoutBtn" onclick="window.location.href='/logout'">
-        <span>🚪</span> Logout
-    </div>
-</div>
+            <div id="settingsBtn" onclick="openSettingsModal()">
+                <span>⚙️</span> Settings
+            </div>
+            <div id="logoutBtn" onclick="window.location.href='/logout'">
+                <span>🚪</span> Logout
+            </div>
+        </div>
     </div>
 
     <div id="main">
@@ -43,7 +43,7 @@
         <div id="chat"></div>
         <div id="inputArea">
             <div id="inputBox">
-                <input type="file" id="imageInput" style="display:none">
+                <input type="file" id="imageInput" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" style="display:none">
                 <button class="attachBtn" onclick="document.getElementById('imageInput').click()" title="Attach file">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                 </button>
@@ -73,12 +73,33 @@
     </div>
 </div>
 
+<div id="settingsModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Account Settings</h3>
+            <button class="close-modal-btn" onclick="closeSettingsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="avatar-preview-container">
+                <div id="modalAvatarPreview" class="large-avatar-circle">??</div>
+                <label for="avatarUploadInput" class="avatar-upload-label">Change Photo</label>
+                <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;" onchange="previewAvatar(this)">
+            </div>
+            <div class="settings-info">
+                <p>Logged in as: <strong id="settingsUsernameDisplay">User</strong></p>
+            </div>
+            <button id="saveSettingsBtn" onclick="saveUserProfile()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
 let username = "";
+let userAvatar = "";
 let currentRoom = "general";
 let isDM = false;
 let dmTarget = "";
@@ -92,6 +113,7 @@ fetch("/session")
     .then(r => r.json())
     .then(data => {
         username = data.username;
+        userAvatar = data.avatar;
         socket.emit("userOnline", username);
         currentRoom = "general";
         socket.emit("joinRoom", currentRoom);
@@ -118,8 +140,14 @@ function loadUsers() {
                 const isOnline = onlineUsers.includes(u.username);
                 let statusText = isOnline ? "Online" : formatLastSeen(lastSeenData[u.username]);
                 const initials = u.username.slice(0, 2).toUpperCase();
+                
+                // Switch dynamically between Cloudinary image and structural initials
+                const avatarHTML = u.avatar 
+                    ? `<img src="${u.avatar}" class="dmAvatar ${isOnline ? 'online borderGlow' : ''}" style="object-fit:cover;">`
+                    : `<div class="dmAvatar ${isOnline ? 'online' : ''}">${initials}</div>`;
+
                 div.innerHTML = `
-                    <div class="dmAvatar ${isOnline ? 'online' : ''}">${initials}</div>
+                    ${avatarHTML}
                     <div class="dmInfo">
                         <div class="dmName">${u.username}</div>
                         <div class="dmStatus">${statusText}</div>
@@ -201,7 +229,7 @@ socket.on("loadMessages", (messages) => {
     messages.forEach((data) => {
         const t = new Date(data.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         insertDateDivider(getDateLabel(data.time));
-        renderMessage(data.name, data.msg, data.name === username, t, data._id);
+        renderMessage(data.name, data.msg, data.name === username, t, data._id, data.avatar);
     });
 });
 
@@ -216,85 +244,52 @@ socket.on("message", (data) => {
     }
     if (!inDM && currentRoom !== data.room) return;
     insertDateDivider(getDateLabel(data.time || new Date()));
-    renderMessage(data.name, data.msg, data.name === username, null, data._id);
+    renderMessage(data.name, data.msg, data.name === username, null, data._id, data.avatar);
 });
 
-function renderMessage(name, msg, isMe, time, id) {
+function renderMessage(name, msg, isMe, time, id, avatarUrl) {
     time = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const div = document.createElement("div");
     div.setAttribute("data-id", id || "");
-
-    // 1. Identify file types accurately
+    
+    const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/");
     const isVideo = msg.includes("cloudinary.com") && msg.includes("/video/upload/");
-    const isPdf = msg.toLowerCase().includes(".pdf");
-    // Only treat as an image if it's NOT a PDF
-    const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/") && !isPdf;
-    // Treat as doc if it's a raw upload OR a PDF
-    const isDoc = (msg.includes("cloudinary.com") && msg.includes("/raw/upload/")) || isPdf;
+    const isDoc = msg.includes("cloudinary.com") && !isImage && !isVideo;
 
     const deleteBtn = isMe ? `<button class="actionBtn deleteBtn" onclick="deleteMessage('${id}', this)" title="Delete">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
     </button>` : "";
     
-    const copyBtn = (!isImage && !isVideo && !isDoc) ? `<button class="actionBtn copyBtn" onclick="copyMessage(this)" title="Copy">
+    const copyBtn = !isImage && !isVideo && !isDoc ? `<button class="actionBtn copyBtn" onclick="copyMessage(this)" title="Copy">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
     </button>` : "";
 
     let mediaContent = "";
-    let bubbleClass = "msg"; 
-
     if (isImage) {
         mediaContent = `<img src="${msg}" style="max-width:280px;border-radius:12px;display:block;margin-top:4px;">`;
-        bubbleClass = "msg msg-media-wrapper"; 
     } else if (isVideo) {
         mediaContent = `<video controls style="max-width:280px;border-radius:12px;display:block;margin-top:4px;"><source src="${msg}"></video>`;
-        bubbleClass = "msg msg-media-wrapper"; 
     } else if (isDoc) {
-        // Extract filename and safely decode URL characters like %28 and %29
+        // Fixes %28 and double file formats
         const rawName = msg.split('/').pop();
         const cleanNameString = rawName.substring(rawName.indexOf('_') + 1);
-        const fileName = decodeURIComponent(cleanNameString); 
-        
-        // Premium vector icons instead of emojis
-        const pdfIcon = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-            </svg>`;
-
-        const genericIcon = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-            </svg>`;
-
-        const chosenIcon = isPdf ? pdfIcon : genericIcon;
-        
-        mediaContent = `
-            <a href="${msg}" target="_blank" class="doc-card">
-                <div class="doc-icon-frame">${chosenIcon}</div>
-                <div class="doc-meta">
-                    <div class="doc-name">${fileName}</div>
-                    <div class="doc-desc">Click to view/download</div>
-                </div>
-            </a>`;
-        bubbleClass = "msg msg-media-wrapper"; 
+        const fileName = decodeURIComponent(cleanNameString);
+        mediaContent = `<div class="text"><a href="${msg}" target="_blank" style="color:#5865f2; text-decoration:none; display:flex; align-items:center; gap:5px;">📄 ${fileName}</a></div>`;
     } else {
         mediaContent = `<div class="text">${msg}</div>`;
     }
 
     const initials = name.slice(0, 2).toUpperCase();
+    const avatarDisplay = avatarUrl 
+        ? `<img src="${avatarUrl}" class="avatarCircle" style="object-fit:cover;">`
+        : `<div class="avatarCircle">${initials}</div>`;
 
     if (isMe) {
         div.classList.add("messageWrapper", "meWrapper");
         div.innerHTML = `
             <div class="msgRow">
                 <div class="bubbleCol">
-                    <div class="${bubbleClass} me">${mediaContent}</div>
+                    <div class="msg me">${mediaContent}</div>
                     <span class="msgTime">${time}</span>
                 </div>
                 <div class="msgActions meActions">${copyBtn}${deleteBtn}</div>
@@ -303,10 +298,10 @@ function renderMessage(name, msg, isMe, time, id) {
         div.classList.add("messageWrapper");
         div.innerHTML = `
             <div class="msgRow">
-                <div class="avatarCircle">${initials}</div>
+                ${avatarDisplay}
                 <div class="bubbleCol">
                     <div class="senderName">${name}</div>
-                    <div class="${bubbleClass}">${mediaContent}</div>
+                    <div class="msg">${mediaContent}</div>
                     <span class="msgTime">${time}</span>
                 </div>
                 <div class="msgActions themActions">${copyBtn}</div>
@@ -382,33 +377,6 @@ function acceptJitsiCall() {
     if (pendingJitsiRoom) window.open(`https://meet.jit.si/${pendingJitsiRoom}`, "_blank");
 }
 
-function openSettingsModal() {
-    document.getElementById("settingsUsernameDisplay").innerText = username;
-    // We will populate the preview circle with their current picture/initials in a moment
-    const preview = document.getElementById("modalAvatarPreview");
-    preview.innerText = username.slice(0, 2).toUpperCase();
-    
-    document.getElementById("settingsModal").style.display = "flex";
-}
-
-function closeSettingsModal() {
-    document.getElementById("settingsModal").style.display = "none";
-}
-
-function previewAvatar(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const preview = document.getElementById("modalAvatarPreview");
-            preview.innerText = ""; // Clear text initials
-            preview.style.backgroundImage = `url('${e.target.result}')`;
-            preview.style.backgroundSize = "cover";
-            preview.style.backgroundPosition = "center";
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
 // ── TYPING ──
 let typingTimeout;
 socket.on("userTyping", (data) => {
@@ -421,25 +389,65 @@ socket.on("userTyping", (data) => {
         }, 2000);
     }
 });
+
+// ── SETTINGS INTERFACE SCRIPTS ──
+function openSettingsModal() {
+    document.getElementById("settingsUsernameDisplay").innerText = username;
+    const preview = document.getElementById("modalAvatarPreview");
+    if (userAvatar) {
+        preview.innerText = "";
+        preview.style.backgroundImage = `url('${userAvatar}')`;
+        preview.style.backgroundSize = "cover";
+        preview.style.backgroundPosition = "center";
+    } else {
+        preview.innerText = username.slice(0, 2).toUpperCase();
+        preview.style.backgroundImage = "none";
+    }
+    document.getElementById("settingsModal").style.display = "flex";
+}
+
+function closeSettingsModal() {
+    document.getElementById("settingsModal").style.display = "none";
+}
+
+function previewAvatar(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById("modalAvatarPreview");
+            preview.innerText = "";
+            preview.style.backgroundImage = `url('${e.target.result}')`;
+            preview.style.backgroundSize = "cover";
+            preview.style.backgroundPosition = "center";
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function saveUserProfile() {
+    const fileInput = document.getElementById("avatarUploadInput");
+    if (!fileInput.files[0]) {
+        closeSettingsModal();
+        return;
+    }
+    showToast("Saving Profile...");
+    const formData = new FormData();
+    formData.append("avatar", fileInput.files[0]);
+
+    fetch("/update-profile", { method: "POST", body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                userAvatar = data.avatar;
+                showToast("Profile Updated!");
+                closeSettingsModal();
+                loadUsers(); 
+            } else {
+                showToast("Update failed");
+            }
+        })
+        .catch(() => showToast("Error connecting to server"));
+}
 </script>
-<div id="settingsModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Account Settings</h3>
-            <button class="close-modal-btn" onclick="closeSettingsModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div class="avatar-preview-container">
-                <div id="modalAvatarPreview" class="large-avatar-circle">??</div>
-                <label for="avatarUploadInput" class="avatar-upload-label">Change Photo</label>
-                <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;" onchange="previewAvatar(this)">
-            </div>
-            <div class="settings-info">
-                <p>Logged in as: <strong id="settingsUsernameDisplay">User</strong></p>
-            </div>
-            <button id="saveSettingsBtn" onclick="saveUserProfile()">Save Changes</button>
-        </div>
-    </div>
-</div>
 </body>
 </html>
