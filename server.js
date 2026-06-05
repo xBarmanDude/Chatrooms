@@ -103,20 +103,23 @@ app.post("/upload", upload.single("image"), async (req, res) => {
         const nameWithoutExtension = lastDotIndex !== -1 ? originalName.substring(0, lastDotIndex) : originalName;
         const ext = lastDotIndex !== -1 ? originalName.substring(lastDotIndex) : "";
         const safeName = nameWithoutExtension.replace(/[?&#\\%<>+ ]/g, "-");
-        const customPublicId = Date.now() + "_" + safeName;
+        
+        let customPublicId = Date.now() + "_" + safeName;
         const mimeType = req.file.mimetype;
         let resourceType = "auto";
 
+        // If the file is NOT an image, video, or audio, force it to be a "raw" resource type.
+        // This stops Cloudinary from treating PDFs as images, fixing the browser load error.
         if (!mimeType.startsWith("image/") && !mimeType.startsWith("video/") && !mimeType.startsWith("audio/")) {
             resourceType = "raw";
-            customPublicId += ext;
+            customPublicId += ext; // CRUCIAL: Raw assets must retain their extensions in the public_id
         }
 
         const result = await new Promise((resolve, reject) => {
             cloudinary.uploader.upload_stream(
                 { 
                     folder: "chat_uploads", 
-                    resource_type: "auto",
+                    resource_type: resourceType,
                     public_id: customPublicId 
                 },
                 (error, result) => { if (error) reject(error); else resolve(result); }
