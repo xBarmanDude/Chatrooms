@@ -35,6 +35,7 @@ const Message = mongoose.model("Message", new mongoose.Schema({
 const User = mongoose.model("User", new mongoose.Schema({
     username: { type: String, unique: true },
     password: String,
+    avatar: { type: String, default: "" },
     lastSeen: Date
 }));
 

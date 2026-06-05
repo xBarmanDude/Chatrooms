@@ -655,35 +655,86 @@ body {
     padding-left: 4px;
 }
 
-/* ── ACTION BUTTONS MEDIAL POSITIONING ── */
-/* ── HOVER ACTIONS EFFECT ── */
 
 .msgActions {
     display: flex;
     gap: 4px;
     align-items: center;
-    
-    /* 1. Hide them by default with a smooth fade setup */
     opacity: 0;
     pointer-events: none; /* Disables clicking while invisible */
     transition: opacity 0.2s ease-in-out;
 }
 
-/* 2. Reveal them smoothly when hovering anywhere over the message wrapper */
 .messageWrapper:hover .msgActions {
     opacity: 1;
     pointer-events: auto; /* Re-enables clicking when visible */
 }
 
-/* Spaces your buttons perfectly to the left (inner side) of your bubble */
 .meActions {
     margin-right: 10px; 
 }
 
-/* Spaces their buttons perfectly to the right (inner side) of their bubble */
 .themActions {
     margin-left: 10px;
 }
+
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 2000;
+}
+.modal-content {
+    background: #1e1f22;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    width: 360px; padding: 24px;
+    color: #fff; font-family: 'Inter', sans-serif;
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px;
+}
+.modal-header h3 { margin: 0; font-size: 18px; font-weight: 600; }
+.close-modal-btn {
+    background: none; border: none; color: #aaa;
+    font-size: 24px; cursor: pointer;
+}
+.close-modal-btn:hover { color: #fff; }
+
+.avatar-preview-container {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    margin-bottom: 24px;
+}
+.large-avatar-circle {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: #4f545c; display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: bold; text-transform: uppercase;
+    border: 3px solid #5865f2;
+}
+.avatar-upload-label {
+    font-size: 13px; color: #5865f2; cursor: pointer; font-weight: 500;
+}
+.avatar-upload-label:hover { text-decoration: underline; }
+
+#saveSettingsBtn {
+    width: 100%; padding: 10px; background: #5865f2; border: none;
+    border-radius: 8px; color: white; font-weight: 600; cursor: pointer;
+    transition: background 0.2s;
+}
+#saveSettingsBtn:hover { background: #4752c4; }
+
+#sidebarBottom {
+    display: flex; gap: 10px; padding: 15px;
+}
+#settingsBtn, #logoutBtn {
+    flex: 1; text-align: center; padding: 8px; border-radius: 6px;
+    background: rgba(255,255,255,0.05); cursor: pointer; font-size: 13px;
+}
+#settingsBtn:hover { background: rgba(255,255,255,0.15); }
+#logoutBtn:hover { background: rgba(255, 68, 68, 0.2); color: #ff4444; }
 
 /* ── SCROLLBAR GLOBAL ── */
 * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }

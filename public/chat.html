@@ -19,10 +19,13 @@
         <div class="sectionLabel">DIRECT MESSAGES</div>
         <div id="userList"></div>
         <div id="sidebarBottom">
-            <div id="logoutBtn" onclick="window.location.href='/logout'">
-                <span>🚪</span> Logout
-            </div>
-        </div>
+    <div id="settingsBtn" onclick="openSettingsModal()">
+        <span>⚙️</span> Settings
+    </div>
+    <div id="logoutBtn" onclick="window.location.href='/logout'">
+        <span>🚪</span> Logout
+    </div>
+</div>
     </div>
 
     <div id="main">
@@ -379,6 +382,33 @@ function acceptJitsiCall() {
     if (pendingJitsiRoom) window.open(`https://meet.jit.si/${pendingJitsiRoom}`, "_blank");
 }
 
+function openSettingsModal() {
+    document.getElementById("settingsUsernameDisplay").innerText = username;
+    // We will populate the preview circle with their current picture/initials in a moment
+    const preview = document.getElementById("modalAvatarPreview");
+    preview.innerText = username.slice(0, 2).toUpperCase();
+    
+    document.getElementById("settingsModal").style.display = "flex";
+}
+
+function closeSettingsModal() {
+    document.getElementById("settingsModal").style.display = "none";
+}
+
+function previewAvatar(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById("modalAvatarPreview");
+            preview.innerText = ""; // Clear text initials
+            preview.style.backgroundImage = `url('${e.target.result}')`;
+            preview.style.backgroundSize = "cover";
+            preview.style.backgroundPosition = "center";
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
 // ── TYPING ──
 let typingTimeout;
 socket.on("userTyping", (data) => {
@@ -392,5 +422,24 @@ socket.on("userTyping", (data) => {
     }
 });
 </script>
+<div id="settingsModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Account Settings</h3>
+            <button class="close-modal-btn" onclick="closeSettingsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="avatar-preview-container">
+                <div id="modalAvatarPreview" class="large-avatar-circle">??</div>
+                <label for="avatarUploadInput" class="avatar-upload-label">Change Photo</label>
+                <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;" onchange="previewAvatar(this)">
+            </div>
+            <div class="settings-info">
+                <p>Logged in as: <strong id="settingsUsernameDisplay">User</strong></p>
+            </div>
+            <button id="saveSettingsBtn" onclick="saveUserProfile()">Save Changes</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
