@@ -290,11 +290,11 @@ function renderMessage(name, msg, isMe, time, id) {
         div.classList.add("messageWrapper", "meWrapper");
         div.innerHTML = `
             <div class="msgRow">
-                <div class="msgActions meActions">${copyBtn}${deleteBtn}</div>
                 <div class="bubbleCol">
                     <div class="${bubbleClass} me">${mediaContent}</div>
                     <span class="msgTime">${time}</span>
                 </div>
+                <div class="msgActions meActions">${copyBtn}${deleteBtn}</div>
             </div>`;
     } else {
         div.classList.add("messageWrapper");
