@@ -274,10 +274,9 @@ body {
 .senderName { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.35); padding-left: 2px; margin-bottom: 2px; }
 
 .msgActions {
-    display: flex;
+    display: none;
     flex-direction: column;
     gap: 3px;
-    align-items: center;
     align-self: center;
 }
 .msgRow:hover .msgActions { display: flex; }
@@ -656,6 +655,14 @@ body {
     padding-left: 4px;
 }
 
+/* ── ACTION BUTTONS MEDIAL POSITIONING ── */
+.msgActions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+/* Spaces your buttons perfectly to the left (inner side) of your bubble */
 .meActions {
     margin-right: 10px; 
 }
