@@ -93,9 +93,64 @@
     </div>
 </div>
 
+<div id="video-streams" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+
 <div id="toast"></div>
 
-<script src="/socket.io/socket.io.js"></script>
+<script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
+<script>
+    const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+
+    let localTracks = { videoTrack: null, audioTrack: null };
+    let remoteUsers = {};
+
+    async function joinVideoCall(roomId, userId) {
+        const response = await fetch(`/get-agora-token?channel=${roomId}&uid=${userId}`);
+        const data = await response.json();
+
+        await client.join("affd93b1f9d84aa99e304aabe79347e4", roomId, data.token, userId);
+
+        localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
+
+        const localPlayer = document.createElement("div");
+        localPlayer.id = `user-${userId}`;
+        localPlayer.style.width = "300px";
+        localPlayer.style.height = "200px";
+        document.getElementById("video-streams").appendChild(localPlayer);
+
+        localTracks.videoTrack.play(localPlayer.id);
+
+        await client.publish([localTracks.audioTrack, localTracks.videoTrack]);
+    }
+
+    client.on("user-published", async (user, mediaType) => {
+        await client.subscribe(user, mediaType);
+        remoteUsers[user.uid] = user;
+
+        if (mediaType === "video") {
+            let remotePlayer = document.getElementById(`user-${user.uid}`);
+            if (!remotePlayer) {
+                remotePlayer = document.createElement("div");
+                remotePlayer.id = `user-${user.uid}`;
+                remotePlayer.style.width = "300px";
+                remotePlayer.style.height = "200px";
+                document.getElementById("video-streams").appendChild(remotePlayer);
+            }
+            user.videoTrack.play(remotePlayer.id);
+        }
+
+        if (mediaType === "audio") {
+            user.audioTrack.play();
+        }
+    });
+
+    client.on("user-unpublished", (user) => {
+        const remotePlayer = document.getElementById(`user-${user.uid}`);
+        if (remotePlayer) remotePlayer.remove();
+        delete remoteUsers[user.uid];
+    });
+</script>
 <script>
 const socket = io();
 let username = "";

@@ -12,6 +12,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const userSocketMap = new Map();
+const { RtcTokenBuilder, RtcRole } = require('agora-access-token');
 
 mongoose.connect("mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0");
 
@@ -130,6 +131,34 @@ app.post("/upload", upload.single("image"), async (req, res) => {
         console.error(err);
         res.status(500).json({ success: false });
     }
+});
+
+app.get('/get-agora-token', (req, res) => {
+    const channelName = req.query.channel;
+    const uid = req.query.uid || 0;
+    
+    if (!channelName) {
+        return res.status(400).json({ error: 'Channel name is required' });
+    }
+
+    const appId = 'affd93b1f9d84aa99e304aabe79347e4';
+    const appCertificate = 'cb826790b03e45f79a1c727825c575d3'; 
+    const role = RtcRole.PUBLISHER;
+    
+    const expirationTimeInSeconds = 7200; 
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+    const token = RtcTokenBuilder.buildTokenWithUid(
+        appId, 
+        appCertificate, 
+        channelName, 
+        uid, 
+        role, 
+        privilegeExpiredTs
+    );
+
+    return res.json({ token: token });
 });
 
 app.post("/update-profile", upload.single("avatar"), async (req, res) => {
