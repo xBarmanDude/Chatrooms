@@ -19,13 +19,13 @@
         <div class="sectionLabel">DIRECT MESSAGES</div>
         <div id="userList"></div>
         <div id="sidebarBottom">
-            <div id="settingsBtn" onclick="openSettingsModal()">
-                <span>⚙️</span> Settings
-            </div>
-            <div id="logoutBtn" onclick="window.location.href='/logout'">
-                <span>🚪</span> Logout
-            </div>
-        </div>
+    <div id="settingsBtn" onclick="openSettingsModal()">
+        <span>⚙️</span> Settings
+    </div>
+    <div id="logoutBtn" onclick="window.location.href='/logout'">
+        <span>🚪</span> Logout
+    </div>
+</div>
     </div>
 
     <div id="main">
@@ -43,7 +43,7 @@
         <div id="chat"></div>
         <div id="inputArea">
             <div id="inputBox">
-                <input type="file" id="imageInput" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" style="display:none">
+                <input type="file" id="imageInput" style="display:none">
                 <button class="attachBtn" onclick="document.getElementById('imageInput').click()" title="Attach file">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                 </button>
@@ -140,14 +140,13 @@ function loadUsers() {
                 const isOnline = onlineUsers.includes(u.username);
                 let statusText = isOnline ? "Online" : formatLastSeen(lastSeenData[u.username]);
                 const initials = u.username.slice(0, 2).toUpperCase();
-                
-                // Switch dynamically between Cloudinary image and structural initials
+
                 const avatarHTML = u.avatar 
                     ? `<img src="${u.avatar}" class="dmAvatar ${isOnline ? 'online borderGlow' : ''}" style="object-fit:cover;">`
                     : `<div class="dmAvatar ${isOnline ? 'online' : ''}">${initials}</div>`;
 
                 div.innerHTML = `
-                    ${avatarHTML}
+                    <div class="dmAvatar ${isOnline ? 'online' : ''}">${initials}</div>
                     <div class="dmInfo">
                         <div class="dmName">${u.username}</div>
                         <div class="dmStatus">${statusText}</div>
@@ -229,7 +228,7 @@ socket.on("loadMessages", (messages) => {
     messages.forEach((data) => {
         const t = new Date(data.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         insertDateDivider(getDateLabel(data.time));
-        renderMessage(data.name, data.msg, data.name === username, t, data._id, data.avatar);
+        renderMessage(data.name, data.msg, data.name === username, t, data._id);
     });
 });
 
@@ -244,37 +243,68 @@ socket.on("message", (data) => {
     }
     if (!inDM && currentRoom !== data.room) return;
     insertDateDivider(getDateLabel(data.time || new Date()));
-    renderMessage(data.name, data.msg, data.name === username, null, data._id, data.avatar);
+    renderMessage(data.name, data.msg, data.name === username, null, data._id);
 });
 
-function renderMessage(name, msg, isMe, time, id, avatarUrl) {
+function renderMessage(name, msg, isMe, time, id) {
     time = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const div = document.createElement("div");
     div.setAttribute("data-id", id || "");
-    
-    const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/");
+
     const isVideo = msg.includes("cloudinary.com") && msg.includes("/video/upload/");
-    const isDoc = msg.includes("cloudinary.com") && !isImage && !isVideo;
+    const isPdf = msg.toLowerCase().includes(".pdf");
+    const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/") && !isPdf;
+    const isDoc = (msg.includes("cloudinary.com") && msg.includes("/raw/upload/")) || isPdf;
 
     const deleteBtn = isMe ? `<button class="actionBtn deleteBtn" onclick="deleteMessage('${id}', this)" title="Delete">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
     </button>` : "";
     
-    const copyBtn = !isImage && !isVideo && !isDoc ? `<button class="actionBtn copyBtn" onclick="copyMessage(this)" title="Copy">
+    const copyBtn = (!isImage && !isVideo && !isDoc) ? `<button class="actionBtn copyBtn" onclick="copyMessage(this)" title="Copy">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
     </button>` : "";
 
     let mediaContent = "";
+    let bubbleClass = "msg"; 
+
     if (isImage) {
         mediaContent = `<img src="${msg}" style="max-width:280px;border-radius:12px;display:block;margin-top:4px;">`;
+        bubbleClass = "msg msg-media-wrapper"; 
     } else if (isVideo) {
         mediaContent = `<video controls style="max-width:280px;border-radius:12px;display:block;margin-top:4px;"><source src="${msg}"></video>`;
+        bubbleClass = "msg msg-media-wrapper"; 
     } else if (isDoc) {
-        // Fixes %28 and double file formats
         const rawName = msg.split('/').pop();
         const cleanNameString = rawName.substring(rawName.indexOf('_') + 1);
-        const fileName = decodeURIComponent(cleanNameString);
-        mediaContent = `<div class="text"><a href="${msg}" target="_blank" style="color:#5865f2; text-decoration:none; display:flex; align-items:center; gap:5px;">📄 ${fileName}</a></div>`;
+        const fileName = decodeURIComponent(cleanNameString); 
+        
+        const pdfIcon = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>`;
+
+        const genericIcon = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>`;
+
+        const chosenIcon = isPdf ? pdfIcon : genericIcon;
+        
+        mediaContent = `
+            <a href="${msg}" target="_blank" class="doc-card">
+                <div class="doc-icon-frame">${chosenIcon}</div>
+                <div class="doc-meta">
+                    <div class="doc-name">${fileName}</div>
+                    <div class="doc-desc">Click to view/download</div>
+                </div>
+            </a>`;
+        bubbleClass = "msg msg-media-wrapper"; 
     } else {
         mediaContent = `<div class="text">${msg}</div>`;
     }
@@ -289,7 +319,7 @@ function renderMessage(name, msg, isMe, time, id, avatarUrl) {
         div.innerHTML = `
             <div class="msgRow">
                 <div class="bubbleCol">
-                    <div class="msg me">${mediaContent}</div>
+                    <div class="${bubbleClass} me">${mediaContent}</div>
                     <span class="msgTime">${time}</span>
                 </div>
                 <div class="msgActions meActions">${copyBtn}${deleteBtn}</div>
@@ -301,7 +331,7 @@ function renderMessage(name, msg, isMe, time, id, avatarUrl) {
                 ${avatarDisplay}
                 <div class="bubbleCol">
                     <div class="senderName">${name}</div>
-                    <div class="msg">${mediaContent}</div>
+                    <div class="${bubbleClass}">${mediaContent}</div>
                     <span class="msgTime">${time}</span>
                 </div>
                 <div class="msgActions themActions">${copyBtn}</div>
@@ -377,32 +407,12 @@ function acceptJitsiCall() {
     if (pendingJitsiRoom) window.open(`https://meet.jit.si/${pendingJitsiRoom}`, "_blank");
 }
 
-// ── TYPING ──
-let typingTimeout;
-socket.on("userTyping", (data) => {
-    if (isDM && dmTarget === data.from) {
-        document.getElementById("chatHeaderStatus").innerText = "typing...";
-        clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => {
-            const isOnline = onlineUsers.includes(dmTarget);
-            document.getElementById("chatHeaderStatus").innerText = isOnline ? "🟢 Online" : "Offline";
-        }, 2000);
-    }
-});
-
-// ── SETTINGS INTERFACE SCRIPTS ──
 function openSettingsModal() {
     document.getElementById("settingsUsernameDisplay").innerText = username;
+    // We will populate the preview circle with their current picture/initials in a moment
     const preview = document.getElementById("modalAvatarPreview");
-    if (userAvatar) {
-        preview.innerText = "";
-        preview.style.backgroundImage = `url('${userAvatar}')`;
-        preview.style.backgroundSize = "cover";
-        preview.style.backgroundPosition = "center";
-    } else {
-        preview.innerText = username.slice(0, 2).toUpperCase();
-        preview.style.backgroundImage = "none";
-    }
+    preview.innerText = username.slice(0, 2).toUpperCase();
+    
     document.getElementById("settingsModal").style.display = "flex";
 }
 
@@ -415,7 +425,7 @@ function previewAvatar(input) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const preview = document.getElementById("modalAvatarPreview");
-            preview.innerText = "";
+            preview.innerText = ""; // Clear text initials
             preview.style.backgroundImage = `url('${e.target.result}')`;
             preview.style.backgroundSize = "cover";
             preview.style.backgroundPosition = "center";
@@ -448,6 +458,19 @@ function saveUserProfile() {
         })
         .catch(() => showToast("Error connecting to server"));
 }
+
+// ── TYPING ──
+let typingTimeout;
+socket.on("userTyping", (data) => {
+    if (isDM && dmTarget === data.from) {
+        document.getElementById("chatHeaderStatus").innerText = "typing...";
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            const isOnline = onlineUsers.includes(dmTarget);
+            document.getElementById("chatHeaderStatus").innerText = isOnline ? "🟢 Online" : "Offline";
+        }, 2000);
+    }
+});
 </script>
 </body>
 </html>

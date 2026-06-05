@@ -25,7 +25,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const Message = mongoose.model("Message", new mongoose.Schema({
     name: String,
-    avatar: { type: String, default: "" }, // Attaches user avatar to messages historically
+    avatar: { type: String, default: "" },
     msg: String,
     room: String,
     to: String,
@@ -36,7 +36,7 @@ const Message = mongoose.model("Message", new mongoose.Schema({
 const User = mongoose.model("User", new mongoose.Schema({
     username: { type: String, unique: true },
     password: String,
-    avatar: { type: String, default: "" }, // Custom profile image URL
+    avatar: { type: String, default: "" },
     lastSeen: Date
 }));
 
@@ -94,7 +94,6 @@ app.get("/users", async (req, res) => {
     res.json(users.filter(u => u.username !== req.session.username));
 });
 
-// Chat Attachments File Upload Route (Fixes .pdf.pdf double extensions)
 app.post("/upload", upload.single("image"), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
@@ -107,10 +106,15 @@ app.post("/upload", upload.single("image"), async (req, res) => {
 
         const result = await new Promise((resolve, reject) => {
             cloudinary.uploader.upload_stream(
-                { folder: "chat_uploads", resource_type: "auto", public_id: customPublicId },
+                { 
+                    folder: "chat_uploads", 
+                    resource_type: "auto",
+                    public_id: customPublicId 
+                },
                 (error, result) => { if (error) reject(error); else resolve(result); }
             ).end(req.file.buffer);
         });
+        
         res.json({ success: true, url: result.secure_url });
     } catch (err) {
         console.error(err);
@@ -118,7 +122,6 @@ app.post("/upload", upload.single("image"), async (req, res) => {
     }
 });
 
-// Profile Picture Settings Upload Route
 app.post("/update-profile", upload.single("avatar"), async (req, res) => {
     if (!req.session.username) return res.status(401).json({ success: false, error: "Unauthorized" });
     try {
@@ -146,29 +149,34 @@ const onlineUsers = new Map();
 io.on("connection", (socket) => {
 
     socket.on("typing", (data) => {
-        const targetSocketId = userSocketMap.get(data.to);
-        if (targetSocketId) {
-            io.to(targetSocketId).emit("userTyping", { from: onlineUsers.get(socket.id) });
-        }
-    });
+    const targetSocketId = userSocketMap.get(data.to);
+    if (targetSocketId) {
+        io.to(targetSocketId).emit("userTyping", { from: onlineUsers.get(socket.id) });
+    }
+});
 
-    socket.on("call-invite", ({ to, from, room }) => {
-        const targetId = userSocketMap.get(to);
-        if (targetId) io.to(targetId).emit("call-invite", { from, room });
-    });
+socket.on("call-invite", ({ to, from, room }) => {
+    const targetId = userSocketMap.get(to);
+    if (targetId) io.to(targetId).emit("call-invite", { from, room });
+});
 
     socket.on("userOnline", (username) => {
         userSocketMap.set(username, socket.id);
-        onlineUsers.set(socket.id, username);
-        io.emit("onlineUsers", Array.from(userSocketMap.keys()));
+onlineUsers.set(socket.id, username);
+
+io.emit("onlineUsers", Array.from(userSocketMap.keys()));
     });
 
     socket.on("joinRoom", async (room) => {
-        const targetRoom = room || "general";
-        socket.join(targetRoom);
-        const messages = await Message.find({ room: targetRoom, isDM: false }).sort({ time: -1 }).limit(50);
-        socket.emit("loadMessages", messages.reverse()); 
-    });
+    const targetRoom = room || "general";
+    socket.join(targetRoom);
+    
+    const messages = await Message.find({ room: targetRoom, isDM: false })
+                                  .sort({ time: -1 }) 
+                                  .limit(50);
+                                  
+    socket.emit("loadMessages", messages.reverse()); 
+});
 
     socket.on("getLastSeen", async () => {
         const users = await User.find({}, "username lastSeen").lean();
@@ -178,38 +186,48 @@ io.on("connection", (socket) => {
     });
 
     socket.on("joinDM", async (data) => {
-        const dmRoom = [data.from, data.to].sort().join("_");
-        socket.join(dmRoom);
-        const messages = await Message.find({ room: dmRoom, isDM: true }).sort({ time: -1 }).limit(50);
-        socket.emit("loadMessages", messages.reverse()); 
+    const dmRoom = [data.from, data.to].sort().join("_");
+    socket.join(dmRoom);
+    
+    const messages = await Message.find({ room: dmRoom, isDM: true })
+        .sort({ time: -1 }) 
+        .limit(50);
+        
+    socket.emit("loadMessages", messages.reverse()); // Reverse back to chronological
+});
+
+socket.on("dm", async (data) => {
+    const from = (data.from || "");
+    const to = (data.to || "");
+    const msg = data.msg;
+    if (!from || !to || !msg) return;
+
+    const dmRoom = [from.trim(), to.trim()].sort().join("_");
+    const user = await User.findOne({ username: from }, "avatar");
+
+    const newMsg = await Message.create({
+        name: from, avatar: user?.avatar || "", msg, room: dmRoom, to, isDM: true
     });
 
-    socket.on("dm", async (data) => {
-        const from = (data.from || "").trim();
-        const to = (data.to || "").trim();
-        const msg = data.msg;
-        if (!from || !to || !msg) return;
+    io.to(dmRoom).emit("message", newMsg);
+});
 
-        const dmRoom = [from, to].sort().join("_");
-        const user = await User.findOne({ username: from }, "avatar");
+socket.on("message", async (data) => {
+    const room = "general"; 
+    if (!data?.msg || !data?.name) return;
 
-        const newMsg = await Message.create({
-            name: from, avatar: user?.avatar || "", msg, room: dmRoom, to, isDM: true
-        });
-        io.to(dmRoom).emit("message", newMsg);
+    const user = await User.findOne({ username: data.name }, "avatar");
+
+    const newMsg = await Message.create({ 
+        name: data.name,
+        avatar: user?.avatar || "",
+        msg: data.msg, 
+        room: room,
+        isDM: false 
     });
 
-    socket.on("message", async (data) => {
-        const room = "general"; 
-        if (!data?.msg || !data?.name) return;
-
-        const user = await User.findOne({ username: data.name }, "avatar");
-
-        const newMsg = await Message.create({ 
-            name: data.name, avatar: user?.avatar || "", msg: data.msg, room: room, isDM: false 
-        });
-        io.to(room).emit("message", newMsg);
-    });
+    io.to(room).emit("message", newMsg);
+});
 
     socket.on("deleteMessage", async (data) => {
         if (!data?.id) return;
@@ -218,14 +236,16 @@ io.on("connection", (socket) => {
     });
 
     socket.on("disconnect", async () => {
-        const username = onlineUsers.get(socket.id);
-        if (username) {
-            userSocketMap.delete(username);
-            onlineUsers.delete(socket.id);
-            await User.updateOne({ username }, { lastSeen: new Date() });
-        }
-        io.emit("onlineUsers", Array.from(userSocketMap.keys()));
-    });
+    const username = onlineUsers.get(socket.id);
+
+    if (username) {
+        userSocketMap.delete(username);
+        onlineUsers.delete(socket.id);
+        await User.updateOne({ username }, { lastSeen: new Date() });
+    }
+
+    io.emit("onlineUsers", Array.from(userSocketMap.keys()));
+});
 });
 
 server.listen(process.env.PORT || 3000, () => {
