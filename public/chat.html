@@ -19,13 +19,13 @@
         <div class="sectionLabel">DIRECT MESSAGES</div>
         <div id="userList"></div>
         <div id="sidebarBottom">
-    <div id="settingsBtn" onclick="openSettingsModal()">
-        <span>⚙️</span> Settings
-    </div>
-    <div id="logoutBtn" onclick="window.location.href='/logout'">
-        <span>🚪</span> Logout
-    </div>
-</div>
+            <div id="settingsBtn" onclick="openSettingsModal()">
+                <span>⚙️</span> Settings
+            </div>
+            <div id="logoutBtn" onclick="window.location.href='/logout'">
+                <span>🚪</span> Logout
+            </div>
+        </div>
     </div>
 
     <div id="main">
@@ -146,7 +146,7 @@ function loadUsers() {
                     : `<div class="dmAvatar ${isOnline ? 'online' : ''}">${initials}</div>`;
 
                 div.innerHTML = `
-                    <div class="dmAvatar ${isOnline ? 'online' : ''}">${initials}</div>
+                    ${avatarHTML}
                     <div class="dmInfo">
                         <div class="dmName">${u.username}</div>
                         <div class="dmStatus">${statusText}</div>
@@ -228,7 +228,7 @@ socket.on("loadMessages", (messages) => {
     messages.forEach((data) => {
         const t = new Date(data.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         insertDateDivider(getDateLabel(data.time));
-        renderMessage(data.name, data.msg, data.name === username, t, data._id);
+        renderMessage(data.name, data.msg, data.name === username, t, data._id, data.avatar);
     });
 });
 
@@ -243,10 +243,10 @@ socket.on("message", (data) => {
     }
     if (!inDM && currentRoom !== data.room) return;
     insertDateDivider(getDateLabel(data.time || new Date()));
-    renderMessage(data.name, data.msg, data.name === username, null, data._id);
+    renderMessage(data.name, data.msg, data.name === username, null, data._id, data.avatar);
 });
 
-function renderMessage(name, msg, isMe, time, id) {
+function renderMessage(name, msg, isMe, time, id, avatar) {
     time = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const div = document.createElement("div");
     div.setAttribute("data-id", id || "");
@@ -310,8 +310,8 @@ function renderMessage(name, msg, isMe, time, id) {
     }
 
     const initials = name.slice(0, 2).toUpperCase();
-    const avatarDisplay = avatarUrl 
-        ? `<img src="${avatarUrl}" class="avatarCircle" style="object-fit:cover;">`
+    const avatarDisplay = avatar 
+        ? `<img src="${avatar}" class="avatarCircle" style="object-fit:cover;">`
         : `<div class="avatarCircle">${initials}</div>`;
 
     if (isMe) {
@@ -409,7 +409,6 @@ function acceptJitsiCall() {
 
 function openSettingsModal() {
     document.getElementById("settingsUsernameDisplay").innerText = username;
-    // We will populate the preview circle with their current picture/initials in a moment
     const preview = document.getElementById("modalAvatarPreview");
     preview.innerText = username.slice(0, 2).toUpperCase();
     
@@ -425,7 +424,7 @@ function previewAvatar(input) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const preview = document.getElementById("modalAvatarPreview");
-            preview.innerText = ""; // Clear text initials
+            preview.innerText = ""; 
             preview.style.backgroundImage = `url('${e.target.result}')`;
             preview.style.backgroundSize = "cover";
             preview.style.backgroundPosition = "center";
