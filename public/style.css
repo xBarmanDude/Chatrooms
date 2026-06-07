@@ -749,7 +749,7 @@ body {
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background-color: #2c2c2e; /* Sleek dark grey */
+    background-color: #2c2c2e; 
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #ffffff;
     font-size: 18px;
@@ -767,14 +767,14 @@ body {
 }
 
 .share-btn {
-    background-color: #007aff; /* Premium iOS Blue */
+    background-color: #007aff; 
 }
 .share-btn:hover {
     background-color: #1485ff;
 }
 
 .btn-disabled-active {
-    background-color: #ea4335 !important; /* Premium Clean Red */
+    background-color: #ea4335 !important; 
     color: #ffffff;
 }
 
@@ -783,6 +783,47 @@ body {
 }
 .end-btn:hover {
     background-color: #ff3322;
+}
+
+#video-streams {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    min-height: 65vh; 
+    padding: 20px;
+    box-sizing: border-box;
+    margin: 0 auto;
+}
+
+.video-tile {
+    flex: 1 1 calc(45% - 12px); 
+    min-width: 320px;
+    max-width: 680px;
+    aspect-ratio: 16 / 9; 
+    background: #1a1a1a;
+    border-radius: 16px; 
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.video-tile:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 45px rgba(0, 0, 0, 0.7);
+}
+
+.video-tile div {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.video-tile.zoomed-video {
+    flex: 1 1 100%;
+    max-width: 960px; 
 }
 
 * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }

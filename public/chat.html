@@ -458,12 +458,7 @@ async function joinAgoraRoom(roomName) {
 
         const localPlayer = document.createElement("div");
         localPlayer.id = `user-${username}`;
-        localPlayer.style.width = "320px";
-        localPlayer.style.height = "240px";
-        localPlayer.style.borderRadius = "10px";
-        localPlayer.style.overflow = "hidden";
-        localPlayer.style.background = "#222";
-        localPlayer.style.cursor = "pointer"; 
+        localPlayer.className = "video-tile"; 
         localPlayer.addEventListener("click", toggleVideoZoom);
         document.getElementById("video-streams").appendChild(localPlayer);
 
@@ -487,12 +482,7 @@ agoraClient.on("user-published", async (user, mediaType) => {
         if (!remotePlayer) {
             remotePlayer = document.createElement("div");
             remotePlayer.id = `user-${user.uid}`;
-            remotePlayer.style.width = "320px";
-            remotePlayer.style.height = "240px";
-            remotePlayer.style.borderRadius = "10px";
-            remotePlayer.style.overflow = "hidden";
-            remotePlayer.style.background = "#222";
-            remotePlayer.style.cursor = "pointer"; 
+            remotePlayer.className = "video-tile"; 
             remotePlayer.addEventListener("click", toggleVideoZoom);
             document.getElementById("video-streams").appendChild(remotePlayer);
         }
@@ -631,19 +621,11 @@ function toggleVideoZoom(event) {
     
     if (videoTile.classList.contains("zoomed-video")) {
         videoTile.classList.remove("zoomed-video");
-        videoTile.style.width = "320px";
-        videoTile.style.height = "240px";
     } else {
-        document.querySelectorAll("#video-streams > div").forEach(tile => {
+        document.querySelectorAll(".video-tile").forEach(tile => {
             tile.classList.remove("zoomed-video");
-            tile.style.width = "320px";
-            tile.style.height = "240px";
         });
-        
         videoTile.classList.add("zoomed-video");
-        videoTile.style.width = "100%";
-        videoTile.style.maxWidth = "640px"; 
-        videoTile.style.height = "480px";   
     }
 }
 
