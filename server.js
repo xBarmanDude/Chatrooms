@@ -37,7 +37,8 @@ const Message = mongoose.model("Message", new mongoose.Schema({
     room: String,
     to: String,
     isDM: { type: Boolean, default: false },
-    time: { type: Date, default: Date.now }
+    time: { type: Date, default: Date.now },
+edited: { type: Boolean, default: false }
 }));
 
 const User = mongoose.model("User", new mongoose.Schema({
@@ -226,6 +227,17 @@ socket.on("subscribeAllDMs", async (myUsername) => {
         const dmRoom = [myUsername, u.username].sort().join("_");
         socket.join(dmRoom);
     });
+});
+
+socket.on("editMessage", async (data) => {
+    if (!data?.id || !data?.msg) return;
+    const message = await Message.findByIdAndUpdate(
+        data.id,
+        { msg: data.msg, edited: true },
+        { new: true }
+    );
+    if (!message) return;
+    io.to(message.room).emit("messageEdited", { id: data.id, msg: data.msg });
 });
 
 socket.on("call-invite", ({ to, from, room }) => {

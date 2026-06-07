@@ -259,7 +259,7 @@ socket.on("loadMessages", (messages) => {
     messages.forEach((data) => {
         const t = new Date(data.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         insertDateDivider(getDateLabel(data.time));
-        renderMessage(data.name, data.msg, data.name === username, t, data._id, data.avatar);
+        renderMessage(data.name, data.msg, data.name === username, t, data._id, data.avatar, data.edited);
     });
 });
 
@@ -289,6 +289,9 @@ function renderMessage(name, msg, isMe, time, id, avatar) {
     const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/") && !isPdf;
     const isDoc = (msg.includes("cloudinary.com") && msg.includes("/raw/upload/")) || isPdf;
 
+    const editBtn = (isMe && !isImage && !isVideo && !isDoc) ? `<button class="actionBtn" onclick="editMessage('${id}', this)" title="Edit">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+</button>` : "";
     const deleteBtn = isMe ? `<button class="actionBtn deleteBtn" onclick="deleteMessage('${id}', this)" title="Delete">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
     </button>` : "";
@@ -339,8 +342,8 @@ function renderMessage(name, msg, isMe, time, id, avatar) {
             </a>`;
         bubbleClass = "msg msg-media-wrapper"; 
     } else {
-        mediaContent = `<div class="text">${msg}</div>`;
-    }
+    mediaContent = `<div class="text">${msg}${arguments[6] ? '<span class="editedTag">(edited)</span>' : ''}</div>`;
+}
 
     const initials = name.slice(0, 2).toUpperCase();
     const avatarDisplay = avatar 
@@ -355,7 +358,7 @@ function renderMessage(name, msg, isMe, time, id, avatar) {
                     <div class="${bubbleClass} me">${mediaContent}</div>
                     <span class="msgTime">${time}</span>
                 </div>
-                <div class="msgActions meActions">${copyBtn}${deleteBtn}</div>
+                <div class="msgActions meActions">${copyBtn}${editBtn}${deleteBtn}</div>
             </div>`;
     } else {
         div.classList.add("messageWrapper");
@@ -742,6 +745,60 @@ function playNotificationSound() {
         oscillator.stop(ctx.currentTime + 0.3);
     } catch(e) {}
 }
+
+function editMessage(id, btn) {
+    const wrapper = btn.closest(".messageWrapper");
+    const textDiv = wrapper.querySelector(".text");
+    if (!textDiv) return;
+    
+    const clone = textDiv.cloneNode(true);
+    clone.querySelector('.editedTag')?.remove();
+    const currentText = clone.innerText.trim();
+    
+    let confirmed = false, cancelled = false;
+    
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = currentText;
+    input.className = "editInput";
+    textDiv.replaceWith(input);
+    input.focus();
+    input.select();
+    
+    function confirmEdit() {
+        if (cancelled) return;
+        confirmed = true;
+        const newMsg = input.value.trim();
+        if (newMsg && newMsg !== currentText) {
+            socket.emit("editMessage", { id, msg: newMsg });
+        }
+        const newDiv = document.createElement("div");
+        newDiv.className = "text";
+        newDiv.innerHTML = (newMsg || currentText) + (newMsg !== currentText ? '<span class="editedTag">(edited)</span>' : '');
+        input.replaceWith(newDiv);
+    }
+    
+    function cancelEdit() {
+        cancelled = true;
+        const newDiv = document.createElement("div");
+        newDiv.className = "text";
+        newDiv.innerHTML = textDiv.innerHTML;
+        input.replaceWith(newDiv);
+    }
+    
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); confirmEdit(); }
+        if (e.key === "Escape") cancelEdit();
+    });
+    input.addEventListener("blur", () => { if (!confirmed && !cancelled) confirmEdit(); });
+}
+
+socket.on("messageEdited", (data) => {
+    const el = document.querySelector(`[data-id="${data.id}"]`);
+    if (!el) return;
+    const textDiv = el.querySelector(".text");
+    if (textDiv) textDiv.innerHTML = data.msg + '<span class="editedTag">(edited)</span>';
+});
 
 // ── TYPING ──
 let typingTimeout;

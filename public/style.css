@@ -846,4 +846,21 @@ body {
     border-radius: 8px;
 }
 
+.editInput {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid #00c853;
+        border-radius: 8px;
+        color: white;
+        padding: 4px 8px;
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        width: 100%;
+        outline: none;
+    }
+.editedTag {
+        font-size: 10px;
+        opacity: 0.5;
+        margin-left: 4px;
+    }
+
 * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
