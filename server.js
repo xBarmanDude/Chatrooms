@@ -135,7 +135,7 @@ app.post("/upload", upload.single("image"), async (req, res) => {
 
 app.get('/get-agora-token', (req, res) => {
     const channelName = req.query.channel;
-    const uid = req.query.uid || 0;
+    const uid = req.query.uid || ""; 
     
     if (!channelName) {
         return res.status(400).json({ error: 'Channel name is required' });
@@ -149,7 +149,7 @@ app.get('/get-agora-token', (req, res) => {
     const currentTimestamp = Math.floor(Date.now() / 1000);
     const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
-    const token = RtcTokenBuilder.buildTokenWithUid(
+    const token = RtcTokenBuilder.buildTokenWithUserAccount(
         appId, 
         appCertificate, 
         channelName, 
