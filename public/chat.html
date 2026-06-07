@@ -109,6 +109,10 @@
 
 <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
 
+<script src="https://download.agora.io/sdk/release/agora-extension-ai-denoiser-2.2.0.js"></script>
+
+<script src="https://download.agora.io/sdk/release/agora-extension-virtual-background-2.2.0.js"></script>
+
 <script>
 const socket = io();
 let username = "";
@@ -123,6 +127,10 @@ let lastSeenData = {};
 let localTracks = { videoTrack: null, audioTrack: null };
 let remoteUsers = {};
 let pendingAgoraRoom = null;
+let isMuted = false;
+let isVideoMuted = false;
+let screenTrack = null;
+let videoProcessor = null;
 
 fetch("/session")
     .then(r => r.json())
@@ -403,9 +411,18 @@ document.getElementById("imageInput").addEventListener("change", async function 
 });
 
 const agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-
-
 const AGORA_APP_ID = "affd93b1f9d84aa99e304aabe79347e4"; 
+const denoiser = new AIDenoiserExtension();
+AgoraRTC.registerExtensions([denoiser]);
+const audioProcessor = denoiser.createProcessor();
+const backgroundExtension = new VirtualBackgroundExtension();
+AgoraRTC.registerExtensions([backgroundExtension]);
+
+async function applyNoiseSuppression() {
+    localTracks.audioTrack.pipe(audioProcessor).pipe(localTracks.audioTrack.destination);
+    
+    await audioProcessor.enable();
+}
 
 async function startAgoraCall() {
     if (!isDM || !dmTarget) { showToast("Open a DM first"); return; }
@@ -510,6 +527,98 @@ async function leaveAgoraCall() {
     remoteUsers = {};
     pendingAgoraRoom = null;
     showToast("Call ended");
+}
+
+async function toggleAudio() {
+    if (!localTracks.audioTrack) return; 
+    
+    isMuted = !isMuted; 
+    
+    await localTracks.audioTrack.setEnabled(!isMuted);
+    
+    const muteBtn = document.getElementById("muteBtn");
+    if (isMuted) {
+        muteBtn.innerText = "🎤 Unmuted (Mute)";
+        muteBtn.classList.add("muted-active");
+    } else {
+        muteBtn.innerText = "🔇 Muted (Unmute)";
+        muteBtn.classList.remove("muted-active");
+    }
+}
+
+async function toggleVideo() {
+    if (!localTracks.videoTrack) return; 
+    
+    isVideoMuted = !isVideoMuted;
+    
+    await localTracks.videoTrack.setEnabled(!isVideoMuted);
+    
+    const videoBtn = document.getElementById("videoBtn");
+    if (isVideoMuted) {
+        videoBtn.innerText = "📷 Camera Off";
+        videoBtn.classList.add("camera-off-active");
+    } else {
+        videoBtn.innerText = "🎥 Camera On";
+        videoBtn.classList.remove("camera-off-active");
+    }
+}
+
+async function toggleScreenShare() {
+    const shareBtn = document.getElementById("screenShareBtn");
+    
+    if (screenTrack) {
+        stopScreenShare();
+        shareBtn.innerText = "🖥️ Share Screen";
+        return;
+    }
+
+    try {
+        screenTrack = await AgoraRTC.createScreenVideoTrack({
+            optimizationMode: "detail" 
+        });
+
+        await agoraClient.unpublish(localTracks.videoTrack);
+
+        await agoraClient.publish(screenTrack);
+
+        screenTrack.play(`user-${username}`);
+
+        shareBtn.innerText = "🛑 Stop Sharing";
+
+        screenTrack.on("track-ended", () => {
+            stopScreenShare();
+            shareBtn.innerText = "🖥️ Share Screen";
+        });
+
+    } catch (err) {
+        console.error("Screen share was cancelled or failed:", err);
+    }
+}
+
+async function stopScreenShare() {
+    if (screenTrack) {
+        screenTrack.close(); 
+        await agoraClient.unpublish(screenTrack); 
+        screenTrack = null;
+        
+        await agoraClient.publish(localTracks.videoTrack);
+        localTracks.videoTrack.play(`user-${username}`);
+    }
+}
+
+async function initVirtualBackground() {
+    videoProcessor = backgroundExtension.createProcessor();
+    
+    await videoProcessor.init();
+
+    localTracks.videoTrack.pipe(videoProcessor).pipe(localTracks.videoTrack.destination);
+
+    await videoProcessor.setOptions({
+        type: 'blur',       
+        blurDegree: 3      
+    });
+
+    await videoProcessor.enable();
 }
 
 function openSettingsModal() {
