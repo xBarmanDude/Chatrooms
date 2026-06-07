@@ -13,6 +13,12 @@ const server = http.createServer(app);
 const io = new Server(server);
 const userSocketMap = new Map();
 const { RtcTokenBuilder, RtcRole } = require('agora-token');
+const webpush = require('web-push');
+webpush.setVapidDetails(
+    'mailto:chatrooms@app.com',
+    'BJcFZ9-DOXiATq4if51Pgw9eirLRgbE_fbkxOo4kb5LFY1kzi5vprKKIUU8mOpztltKGnvlD4LOEJnuD-HgXak8',
+    'OjV_FojsHyiWNHkdH32YKGZTcoak259DmPlItc9dEB4'
+);
 
 mongoose.connect("mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0");
 
@@ -39,6 +45,11 @@ const User = mongoose.model("User", new mongoose.Schema({
     password: String,
     avatar: { type: String, default: "" },
     lastSeen: Date
+}));
+
+const PushSub = mongoose.model("PushSub", new mongoose.Schema({
+    username: { type: String, unique: true },
+    subscription: Object
 }));
 
 app.use(express.json());
@@ -181,6 +192,21 @@ app.post("/update-profile", upload.single("avatar"), async (req, res) => {
     }
 });
 
+app.get('/vapid-public-key', (req, res) => {
+    res.json({ publicKey: 'BJcFZ9-DOXiATq4if51Pgw9eirLRgbE_fbkxOo4kb5LFY1kzi5vprKKIUU8mOpztltKGnvlD4LOEJnuD-HgXak8' });
+});
+
+app.post('/subscribe', async (req, res) => {
+    if (!req.session.username) return res.status(401).json({ error: 'Unauthorized' });
+    const { subscription } = req.body;
+    await PushSub.findOneAndUpdate(
+        { username: req.session.username },
+        { username: req.session.username, subscription },
+        { upsert: true, new: true }
+    );
+    res.json({ success: true });
+});
+
 app.use(express.static("public"));
 
 const onlineUsers = new Map();
@@ -249,6 +275,22 @@ socket.on("dm", async (data) => {
     });
 
     io.to(dmRoom).emit("message", newMsg);
+    const recipientSub = await PushSub.findOne({ username: to });
+    if (recipientSub && !userSocketMap.has(to)) {
+    try {
+        await webpush.sendNotification(
+            recipientSub.subscription,
+            JSON.stringify({
+                title: `💬 ${from}`,
+                body: msg.startsWith('https://') 
+                    ? '📎 Sent an attachment' 
+                    : (msg.length > 60 ? msg.substring(0, 60) + '...' : msg)
+            })
+        );
+    } catch (err) {
+        if (err.statusCode === 410) await PushSub.deleteOne({ username: to });
+    }
+}
 });
 
 socket.on("message", async (data) => {
