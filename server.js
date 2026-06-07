@@ -220,6 +220,14 @@ io.on("connection", (socket) => {
     }
 });
 
+socket.on("subscribeAllDMs", async (myUsername) => {
+    const users = await User.find({ username: { $ne: myUsername } }, "username").lean();
+    users.forEach(u => {
+        const dmRoom = [myUsername, u.username].sort().join("_");
+        socket.join(dmRoom);
+    });
+});
+
 socket.on("call-invite", ({ to, from, room }) => {
     const targetId = userSocketMap.get(to);
     if (targetId) io.to(targetId).emit("call-invite", { from, room });

@@ -144,6 +144,7 @@ fetch("/session")
         username = data.username;
         userAvatar = data.avatar;
         socket.emit("userOnline", username);
+        socket.emit("subscribeAllDMs", username);
         currentRoom = "general";
         socket.emit("joinRoom", currentRoom);
         registerPushNotifications();
