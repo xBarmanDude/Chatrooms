@@ -4,6 +4,7 @@
     <title>Chat Rooms</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 <div id="appContainer">
@@ -97,11 +98,17 @@
     <h3 id="videoCallTitle" style="margin-bottom: 20px; font-weight: 500; font-family: 'Inter', sans-serif;">Video Call</h3>
     
     <div id="video-streams" style="display: flex; gap: 20px; justify-content: center; align-items: center; width: 80%; height: 60%; flex-wrap: wrap;"></div>
-    <div class="video-controls" style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
-    <button id="muteBtn" onclick="toggleAudio()" style="padding: 10px 15px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">🎤 Mute</button>
-    <button id="videoBtn" onclick="toggleVideo()" style="padding: 10px 15px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">🎥 Camera On</button>
-    <button id="screenShareBtn" onclick="toggleScreenShare()" style="padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">🖥️ Share Screen</button>
-</div>
+    <div class="video-controls">
+       <button id="muteBtn" onclick="toggleAudio()" class="control-btn" title="Mute Microphone">
+          <i class="fas fa-microphone"></i>
+       </button>
+       <button id="videoBtn" onclick="toggleVideo()" class="control-btn" title="Toggle Camera">
+          <i class="fas fa-video"></i>
+       </button>
+       <button id="screenShareBtn" onclick="toggleScreenShare()" class="control-btn share-btn" title="Share Screen">
+          <i class="fas fa-desktop"></i>
+       </button>
+    </div>
     
     <button onclick="leaveAgoraCall()" style="margin-top: 30px; background: #ef4444; color: white; border: none; padding: 12px 35px; border-radius: 30px; cursor: pointer; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif; display: flex; align-items: center; gap: 8px; transition: 0.2s;">
         ❌ End Call
@@ -525,9 +532,14 @@ async function leaveAgoraCall() {
     pendingAgoraRoom = null;
     isMuted = false;
     isVideoMuted = false;
-    document.getElementById("muteBtn").innerText = "🎤 Mute";
-document.getElementById("videoBtn").innerText = "🎥 Camera On";
-document.getElementById("screenShareBtn").innerText = "🖥️ Share Screen";
+
+    document.querySelector("#muteBtn i").className = "fas fa-microphone";
+    document.getElementById("muteBtn").classList.remove("btn-disabled-active");
+    document.querySelector("#videoBtn i").className = "fas fa-video";
+    document.getElementById("videoBtn").classList.remove("btn-disabled-active");
+    document.querySelector("#screenShareBtn i").className = "fas fa-desktop";
+    document.getElementById("screenShareBtn").classList.remove("btn-disabled-active");
+
     showToast("Call ended");
 }
 
@@ -540,12 +552,14 @@ async function toggleAudio() {
     await localTracks.audioTrack.setEnabled(!isMuted);
     
     const muteBtn = document.getElementById("muteBtn");
+    const muteIcon = muteBtn.querySelector("i");
+    
     if (isMuted) {
-        muteBtn.innerText = "🎤 Unmuted (Mute)";
-        muteBtn.classList.add("muted-active");
+        muteIcon.className = "fas fa-microphone-slash"; 
+        muteBtn.classList.add("btn-disabled-active");   
     } else {
-        muteBtn.innerText = "🔇 Muted (Unmute)";
-        muteBtn.classList.remove("muted-active");
+        muteIcon.className = "fas fa-microphone";       
+        muteBtn.classList.remove("btn-disabled-active"); 
     }
 }
 
@@ -556,38 +570,42 @@ async function toggleVideo() {
     await localTracks.videoTrack.setEnabled(!isVideoMuted);
     
     const videoBtn = document.getElementById("videoBtn");
+    const videoIcon = videoBtn.querySelector("i");
+    
     if (isVideoMuted) {
-        videoBtn.innerText = "📷 Camera Off";
-        videoBtn.classList.add("camera-off-active");
+        videoIcon.className = "fas fa-video-slash";     
+        videoBtn.classList.add("btn-disabled-active");    
     } else {
-        videoBtn.innerText = "🎥 Camera On";
-        videoBtn.classList.remove("camera-off-active");
+        videoIcon.className = "fas fa-video";           
+        videoBtn.classList.remove("btn-disabled-active"); 
     }
 }
 
 async function toggleScreenShare() {
     const shareBtn = document.getElementById("screenShareBtn");
+    const shareIcon = shareBtn.querySelector("i");
     
     if (screenTrack) {
         stopScreenShare();
-        shareBtn.innerText = "🖥️ Share Screen";
+        shareIcon.className = "fas fa-desktop";
+        shareBtn.classList.remove("btn-disabled-active");
         return;
     }
 
     try {
-        screenTrack = await AgoraRTC.createScreenVideoTrack({
-            optimizationMode: "detail" 
-        });
+        screenTrack = await AgoraRTC.createScreenVideoTrack({ optimizationMode: "detail" });
 
         await agoraClient.unpublish(localTracks.videoTrack);
         await agoraClient.publish(screenTrack);
         screenTrack.play(`user-${username}`);
 
-        shareBtn.innerText = "🛑 Stop Sharing";
+        shareIcon.className = "fas fa-stop"; 
+        shareBtn.classList.add("btn-disabled-active");
 
         screenTrack.on("track-ended", () => {
             stopScreenShare();
-            shareBtn.innerText = "🖥️ Share Screen";
+            shareIcon.className = "fas fa-desktop";
+            shareBtn.classList.remove("btn-disabled-active");
         });
 
     } catch (err) {
