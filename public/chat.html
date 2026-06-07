@@ -106,12 +106,7 @@
 <div id="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
-
 <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
-
-<script src="https://download.agora.io/sdk/release/agora-extension-ai-denoiser-2.2.0.js"></script>
-
-<script src="https://download.agora.io/sdk/release/agora-extension-virtual-background-2.2.0.js"></script>
 
 <script>
 const socket = io();
@@ -130,7 +125,6 @@ let pendingAgoraRoom = null;
 let isMuted = false;
 let isVideoMuted = false;
 let screenTrack = null;
-let videoProcessor = null;
 
 fetch("/session")
     .then(r => r.json())
@@ -412,17 +406,6 @@ document.getElementById("imageInput").addEventListener("change", async function 
 
 const agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 const AGORA_APP_ID = "affd93b1f9d84aa99e304aabe79347e4"; 
-const denoiser = new AIDenoiserExtension();
-AgoraRTC.registerExtensions([denoiser]);
-const audioProcessor = denoiser.createProcessor();
-const backgroundExtension = new VirtualBackgroundExtension();
-AgoraRTC.registerExtensions([backgroundExtension]);
-
-async function applyNoiseSuppression() {
-    localTracks.audioTrack.pipe(audioProcessor).pipe(localTracks.audioTrack.destination);
-    
-    await audioProcessor.enable();
-}
 
 async function startAgoraCall() {
     if (!isDM || !dmTarget) { showToast("Open a DM first"); return; }
@@ -458,6 +441,7 @@ async function joinAgoraRoom(roomName) {
 
         await agoraClient.join(AGORA_APP_ID, roomName, data.token, username);
 
+        // Standard microphone and camera initialization
         localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
         localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
 
@@ -520,20 +504,28 @@ async function leaveAgoraCall() {
         }
     }
 
+    if (screenTrack) {
+        screenTrack.close();
+        screenTrack = null;
+    }
+
     await agoraClient.leave();
 
     document.getElementById("video-streams").innerHTML = "";
     document.getElementById("videoModal").style.display = "none";
     remoteUsers = {};
     pendingAgoraRoom = null;
+    isMuted = false;
+    isVideoMuted = false;
     showToast("Call ended");
 }
+
+// --- Native Control Features ---
 
 async function toggleAudio() {
     if (!localTracks.audioTrack) return; 
     
     isMuted = !isMuted; 
-    
     await localTracks.audioTrack.setEnabled(!isMuted);
     
     const muteBtn = document.getElementById("muteBtn");
@@ -550,7 +542,6 @@ async function toggleVideo() {
     if (!localTracks.videoTrack) return; 
     
     isVideoMuted = !isVideoMuted;
-    
     await localTracks.videoTrack.setEnabled(!isVideoMuted);
     
     const videoBtn = document.getElementById("videoBtn");
@@ -578,9 +569,7 @@ async function toggleScreenShare() {
         });
 
         await agoraClient.unpublish(localTracks.videoTrack);
-
         await agoraClient.publish(screenTrack);
-
         screenTrack.play(`user-${username}`);
 
         shareBtn.innerText = "🛑 Stop Sharing";
@@ -601,24 +590,11 @@ async function stopScreenShare() {
         await agoraClient.unpublish(screenTrack); 
         screenTrack = null;
         
-        await agoraClient.publish(localTracks.videoTrack);
-        localTracks.videoTrack.play(`user-${username}`);
+        if (localTracks.videoTrack) {
+            await agoraClient.publish(localTracks.videoTrack);
+            localTracks.videoTrack.play(`user-${username}`);
+        }
     }
-}
-
-async function initVirtualBackground() {
-    videoProcessor = backgroundExtension.createProcessor();
-    
-    await videoProcessor.init();
-
-    localTracks.videoTrack.pipe(videoProcessor).pipe(localTracks.videoTrack.destination);
-
-    await videoProcessor.setOptions({
-        type: 'blur',       
-        blurDegree: 3      
-    });
-
-    await videoProcessor.enable();
 }
 
 function openSettingsModal() {
