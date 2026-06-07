@@ -12,7 +12,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const userSocketMap = new Map();
-const { RtcTokenBuilder, RtcRole } = require('agora-access-token');
+const { RtcTokenBuilder, RtcRole } = require('agora-token');
 
 mongoose.connect("mongodb+srv://xBarmanDude:renderer425@cluster0.3mlsxhc.mongodb.net/chatapp?appName=Cluster0");
 

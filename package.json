@@ -11,7 +11,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "agora-access-token": "^2.0.4",
+    "agora-token": "^2.0.5",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.10.0",
     "connect-mongo": "4.6.0",
