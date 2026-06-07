@@ -529,6 +529,7 @@ async function leaveAgoraCall() {
     document.getElementById("videoBtn").classList.remove("btn-disabled-active");
     document.querySelector("#screenShareBtn i").className = "fas fa-desktop";
     document.getElementById("screenShareBtn").classList.remove("btn-disabled-active");
+    document.getElementById("video-streams").classList.remove("focus-active");
 
     showToast("Call ended");
 }
@@ -617,16 +618,28 @@ async function stopScreenShare() {
 }
 
 function toggleVideoZoom(event) {
-    const videoTile = event.currentTarget;
+    const clickedTile = event.currentTarget;
+    const container = document.getElementById("video-streams");
     
-    if (videoTile.classList.contains("zoomed-video")) {
-        videoTile.classList.remove("zoomed-video");
-    } else {
+    if (clickedTile.classList.contains("expanded-stream")) {
+        container.classList.remove("focus-active");
         document.querySelectorAll(".video-tile").forEach(tile => {
-            tile.classList.remove("zoomed-video");
+            tile.classList.remove("expanded-stream", "floating-pip");
         });
-        videoTile.classList.add("zoomed-video");
+        return;
     }
+    
+    container.classList.add("focus-active");
+    
+    document.querySelectorAll(".video-tile").forEach(tile => {
+        if (tile === clickedTile) {
+            tile.classList.add("expanded-stream");
+            tile.classList.remove("floating-pip");
+        } else {
+            tile.classList.add("floating-pip");
+            tile.classList.remove("expanded-stream");
+        }
+    });
 }
 
 function openSettingsModal() {
