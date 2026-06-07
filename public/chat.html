@@ -97,6 +97,11 @@
     <h3 id="videoCallTitle" style="margin-bottom: 20px; font-weight: 500; font-family: 'Inter', sans-serif;">Video Call</h3>
     
     <div id="video-streams" style="display: flex; gap: 20px; justify-content: center; align-items: center; width: 80%; height: 60%; flex-wrap: wrap;"></div>
+    <div class="video-controls" style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+    <button id="muteBtn" onclick="toggleAudio()" style="padding: 10px 15px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">🎤 Mute</button>
+    <button id="videoBtn" onclick="toggleVideo()" style="padding: 10px 15px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">🎥 Camera On</button>
+    <button id="screenShareBtn" onclick="toggleScreenShare()" style="padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">🖥️ Share Screen</button>
+</div>
     
     <button onclick="leaveAgoraCall()" style="margin-top: 30px; background: #ef4444; color: white; border: none; padding: 12px 35px; border-radius: 30px; cursor: pointer; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif; display: flex; align-items: center; gap: 8px; transition: 0.2s;">
         ❌ End Call
@@ -517,6 +522,9 @@ async function leaveAgoraCall() {
     pendingAgoraRoom = null;
     isMuted = false;
     isVideoMuted = false;
+    document.getElementById("muteBtn").innerText = "🎤 Mute";
+document.getElementById("videoBtn").innerText = "🎥 Camera On";
+document.getElementById("screenShareBtn").innerText = "🖥️ Share Screen";
     showToast("Call ended");
 }
 
