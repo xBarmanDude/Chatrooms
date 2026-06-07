@@ -446,7 +446,6 @@ async function joinAgoraRoom(roomName) {
 
         await agoraClient.join(AGORA_APP_ID, roomName, data.token, username);
 
-        // Standard microphone and camera initialization
         localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
         localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
 
@@ -457,6 +456,8 @@ async function joinAgoraRoom(roomName) {
         localPlayer.style.borderRadius = "10px";
         localPlayer.style.overflow = "hidden";
         localPlayer.style.background = "#222";
+        localPlayer.style.cursor = "pointer"; 
+        localPlayer.addEventListener("click", toggleVideoZoom);
         document.getElementById("video-streams").appendChild(localPlayer);
 
         localTracks.videoTrack.play(localPlayer.id);
@@ -484,6 +485,8 @@ agoraClient.on("user-published", async (user, mediaType) => {
             remotePlayer.style.borderRadius = "10px";
             remotePlayer.style.overflow = "hidden";
             remotePlayer.style.background = "#222";
+            remotePlayer.style.cursor = "pointer"; 
+            remotePlayer.addEventListener("click", toggleVideoZoom);
             document.getElementById("video-streams").appendChild(remotePlayer);
         }
         user.videoTrack.play(remotePlayer.id);
@@ -602,6 +605,27 @@ async function stopScreenShare() {
             await agoraClient.publish(localTracks.videoTrack);
             localTracks.videoTrack.play(`user-${username}`);
         }
+    }
+}
+
+function toggleVideoZoom(event) {
+    const videoTile = event.currentTarget;
+    
+    if (videoTile.classList.contains("zoomed-video")) {
+        videoTile.classList.remove("zoomed-video");
+        videoTile.style.width = "320px";
+        videoTile.style.height = "240px";
+    } else {
+        document.querySelectorAll("#video-streams > div").forEach(tile => {
+            tile.classList.remove("zoomed-video");
+            tile.style.width = "320px";
+            tile.style.height = "240px";
+        });
+        
+        videoTile.classList.add("zoomed-video");
+        videoTile.style.width = "100%";
+        videoTile.style.maxWidth = "640px"; 
+        videoTile.style.height = "480px";   
     }
 }
 
