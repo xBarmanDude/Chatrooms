@@ -439,7 +439,7 @@ async function joinAgoraRoom(roomName) {
         const response = await fetch(`/get-agora-token?channel=${roomName}&uid=${username}`);
         const data = await response.json();
 
-        await agoraClient.join(affd93b1f9d84aa99e304aabe79347e4, roomName, data.token, username);
+        await agoraClient.join(AGORA_APP_ID, roomName, data.token, username);
 
         localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
         localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
