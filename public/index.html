@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Rooms</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div id="appContainer">
+    <div id="sidebar">
+        <div id="sidebarTop">
+            <div id="sidebarHeader">𝓒𝓵𝓲𝓺𝓾𝓮</div>
+        </div>
+        <div class="sectionLabel">CHANNELS</div>
+        <div class="sidebarItem active" onclick="switchToGeneral()">
+            <span class="itemIcon">🌐</span>
+            <span class="itemLabel">General</span>
+        </div>
+        <div class="sectionLabel">DIRECT MESSAGES</div>
+        <div id="userList"></div>
+        <div id="sidebarBottom">
+            <div id="settingsBtn" onclick="openSettingsModal()">
+                <span>⚙️</span> Settings
+            </div>
+            <div id="logoutBtn" onclick="window.location.href='/logout'">
+                <span>🚪</span> Logout
+            </div>
+        </div>
+    </div>
+
+    <div id="main">
+        <div id="chatHeader">
+            <div id="chatHeaderLeft">
+                <div id="chatHeaderName">🌐 General</div>
+                <div id="chatHeaderStatus"></div>
+            </div>
+            <div id="chatHeaderRight">
+                <button class="headerBtn" onclick="startAgoraCall()" title="Video Call">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+</button>
+            </div>
+        </div>
+        <div id="chat"></div>
+        <div id="inputArea">
+            <div id="replyPreview" style="display:none">
+    <div id="replyPreviewInner">
+        <div id="replyPreviewBar"></div>
+        <div id="replyPreviewText">
+            <div id="replyPreviewName"></div>
+            <div id="replyPreviewMsg"></div>
+        </div>
+    </div>
+    <button onclick="cancelReply()" id="replyCloseBtn">✕</button>
+</div>
+            <div id="inputBox">
+                <input type="file" id="imageInput" style="display:none">
+                <button class="attachBtn" onclick="document.getElementById('imageInput').click()" title="Attach file">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                </button>
+                <input id="msg" placeholder="Message..."
+                    oninput="socket.emit('typing', { to: dmTarget })"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}">
+                <button class="sendBtn" onclick="sendMessage()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="callPopup">
+    <div id="callPopupInner">
+        <div id="callAvatar">👤</div>
+        <div id="callText">Incoming call...</div>
+        <div id="callPopupBtns">
+            <button class="rejectBtn" onclick="document.getElementById('callPopup').style.display='none'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+            </button>
+            <button class="acceptBtn" onclick="acceptAgoraCall()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+</button>
+        </div>
+    </div>
+</div>
+
+<div id="settingsModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Account Settings</h3>
+            <button class="close-modal-btn" onclick="closeSettingsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="avatar-preview-container">
+                <div id="modalAvatarPreview" class="large-avatar-circle">??</div>
+                <label for="avatarUploadInput" class="avatar-upload-label">Change Photo</label>
+                <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;" onchange="previewAvatar(this)">
+            </div>
+            <div class="settings-info">
+                <p>Logged in as: <strong id="settingsUsernameDisplay">User</strong></p>
+            </div>
+            <button id="saveSettingsBtn" onclick="saveUserProfile()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<div id="videoModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.95); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; color: white;">
+    <h3 id="videoCallTitle" style="margin-bottom: 20px; font-weight: 500; font-family: 'Inter', sans-serif;">Video Call</h3>
+    
+    <div id="video-streams" style="display: flex; gap: 20px; justify-content: center; align-items: center; width: 80%; height: 60%; flex-wrap: wrap;"></div>
+    <div class="video-controls">
+       <button id="muteBtn" onclick="toggleAudio()" class="control-btn" title="Mute Microphone">
+          <i class="fas fa-microphone"></i>
+       </button>
+       <button id="videoBtn" onclick="toggleVideo()" class="control-btn" title="Toggle Camera">
+          <i class="fas fa-video"></i>
+       </button>
+       <button id="screenShareBtn" onclick="toggleScreenShare()" class="control-btn share-btn" title="Share Screen">
+          <i class="fas fa-desktop"></i>
+       </button>
+    </div>
+    
+    <button onclick="leaveAgoraCall()" style="margin-top: 30px; background: #ef4444; color: white; border: none; padding: 12px 35px; border-radius: 30px; cursor: pointer; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif; display: flex; align-items: center; gap: 8px; transition: 0.2s;">
+        ❌ End Call
+    </button>
+</div>
+
+<div id="emojiPicker">
+    <span data-emoji="👍">👍</span>
+    <span data-emoji="❤️">❤️</span>
+    <span data-emoji="😂">😂</span>
+    <span data-emoji="😮">😮</span>
+    <span data-emoji="😢">😢</span>
+    <span data-emoji="🔥">🔥</span>
+</div>
+
+<div id="msgMenu" class="msgDropdown">
+    <div class="menuItem" id="menuReply">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 00-4-4H4"/></svg> Reply
+</div>
+    <div class="menuItem" id="menuCopy" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy
+    </div>
+    <div class="menuItem" id="menuEdit" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit
+    </div>
+    <div class="menuItem danger" id="menuDelete" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg> Delete
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
+
+<script>
+const socket = io();
+let username = "";
+let userAvatar = "";
+let currentRoom = "general";
+let isDM = false;
+let dmTarget = "";
+let lastDateLabel = "";
+let unreadCounts = {};
+let onlineUsers = [];
+let lastSeenData = {};
+let localTracks = { videoTrack: null, audioTrack: null };
+let remoteUsers = {};
+let pendingAgoraRoom = null;
+let isMuted = false;
+let isVideoMuted = false;
+let screenTrack = null;
+let replyingTo = null;
+
+fetch("/session")
+    .then(r => r.json())
+    .then(data => {
+        username = data.username;
+        userAvatar = data.avatar;
+        socket.emit("userOnline", username);
+        socket.emit("subscribeAllDMs", username);
+        currentRoom = "general";
+        socket.emit("joinRoom", currentRoom);
+        registerPushNotifications();
+        loadUsers();
+    });
+
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.innerText = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 3000);
+}
+
+function loadUsers() {
+    fetch("/users")
+        .then(r => r.json())
+        .then(users => {
+            const list = document.getElementById("userList");
+            list.innerHTML = "";
+            users.forEach(u => {
+                const div = document.createElement("div");
+                div.classList.add("sidebarItem");
+                div.id = "dm-" + u.username;
+                const isOnline = onlineUsers.includes(u.username);
+                let statusText = isOnline ? "Online" : formatLastSeen(lastSeenData[u.username]);
+                const initials = u.username.slice(0, 2).toUpperCase();
+
+                const avatarHTML = u.avatar 
+                    ? `<img src="${u.avatar}" class="dmAvatar ${isOnline ? 'online borderGlow' : ''}" style="object-fit:cover;">`
+                    : `<div class="dmAvatar ${isOnline ? 'online' : ''}">${initials}</div>`;
+
+                div.innerHTML = `
+                    ${avatarHTML}
+                    <div class="dmInfo">
+                        <div class="dmName">${u.username}</div>
+                        <div class="dmStatus">${statusText}</div>
+                    </div>
+                    <span class="unreadBadge" id="badge-${u.username}" style="display:none">0</span>
+                `;
+                div.onclick = () => openDM(u.username, div);
+                list.appendChild(div);
+            });
+        });
+}
+
+socket.on("onlineUsers", (users) => {
+    onlineUsers = users;
+    socket.emit("getLastSeen");
+    loadUsers();
+});
+
+socket.on("lastSeenData", (data) => {
+    lastSeenData = data;
+    loadUsers();
+});
+
+function formatLastSeen(dateStr) {
+    if (!dateStr) return "Offline";
+    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (diff < 60) return "Just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function switchToGeneral() {
+    isDM = false; dmTarget = ""; currentRoom = "general"; lastDateLabel = "";
+    document.getElementById("chat").innerHTML = "";
+    document.getElementById("chatHeaderName").innerText = "🌐 General";
+    document.getElementById("chatHeaderStatus").innerText = "";
+    document.querySelectorAll(".sidebarItem").forEach(i => i.classList.remove("active"));
+    document.querySelector(".sidebarItem").classList.add("active");
+    socket.emit("joinRoom", currentRoom);
+}
+
+function openDM(target, el) {
+    isDM = true; dmTarget = target; lastDateLabel = "";
+    document.getElementById("chat").innerHTML = "";
+    document.getElementById("chatHeaderName").innerText = target;
+    const isOnline = onlineUsers.includes(target);
+    document.getElementById("chatHeaderStatus").innerText = isOnline ? "🟢 Online" : "Offline";
+    document.querySelectorAll(".sidebarItem").forEach(i => i.classList.remove("active"));
+    el.classList.add("active");
+    unreadCounts[target] = 0;
+    const badge = document.getElementById("badge-" + target);
+    if (badge) badge.style.display = "none";
+    socket.emit("joinDM", { from: username, to: target });
+}
+
+function getDateLabel(dateStr) {
+    const d = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return "Today";
+    if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+    return d.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+}
+
+function insertDateDivider(dateLabel) {
+    if (dateLabel === lastDateLabel) return;
+    lastDateLabel = dateLabel;
+    const div = document.createElement("div");
+    div.classList.add("dateDivider");
+    div.innerHTML = `<span>${dateLabel}</span>`;
+    document.getElementById("chat").appendChild(div);
+}
+
+socket.on("loadMessages", (messages) => {
+    document.getElementById("chat").innerHTML = "";
+    lastDateLabel = "";
+    messages.forEach((data) => {
+        const t = new Date(data.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        insertDateDivider(getDateLabel(data.time));
+        renderMessage(data.name, data.msg, data.name === username, t, data._id, data.avatar, data.edited, data.reactions, data.replyTo);
+    });
+});
+
+socket.on("message", (data) => {
+    if (document.querySelector(`[data-id="${data._id}"]`)) return;
+    const inDM = data.isDM;
+    if (inDM && (!isDM || (dmTarget !== data.name && dmTarget !== data.to))) {
+    unreadCounts[data.name] = (unreadCounts[data.name] || 0) + 1;
+    const badge = document.getElementById("badge-" + data.name);
+    if (badge) { badge.innerText = unreadCounts[data.name]; badge.style.display = "inline-flex"; }
+    playNotificationSound();
+    return;
+}
+    if (!inDM && currentRoom !== data.room) return;
+    insertDateDivider(getDateLabel(data.time || new Date()));
+    if (data.name !== username) playNotificationSound();
+    renderMessage(data.name, data.msg, data.name === username, null, data._id, data.avatar, data.edited, data.reactions, data.replyTo);
+});
+
+function renderMessage(name, msg, isMe, time, id, avatar) {
+    time = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const div = document.createElement("div");
+    div.setAttribute("data-id", id || "");
+div.setAttribute("data-name", name);
+const replyTo = arguments[8];
+const quoteBlock = replyTo ? `<div class="quoteBlock" onclick="scrollToMessage('${replyTo.id}')">
+    <div class="quoteAuthor">${replyTo.name}</div>
+    <div class="quoteMsg">${replyTo.msg && replyTo.msg.startsWith('https://') ? '📎 Attachment' : (replyTo.msg||'').substring(0,80)}</div>
+</div>` : "";
+
+    const isVideo = msg.includes("cloudinary.com") && msg.includes("/video/upload/");
+    const isPdf = msg.toLowerCase().includes(".pdf");
+    const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/") && !isPdf;
+    const isDoc = (msg.includes("cloudinary.com") && msg.includes("/raw/upload/")) || isPdf;
+
+    const reactBtn = `<button class="actionBtn reactBtnIcon" onclick="showEmojiPicker('${id}', this)" title="React">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+</button>`;
+
+const menuBtn = `<button class="actionBtn menuDotBtn" 
+    data-id="${id}"
+    data-is-me="${isMe}"
+    data-is-media="${isImage || isVideo || isDoc}"
+    onclick="showMsgMenu(event, this)"
+    title="More">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+</button>`;
+
+const menuItems = isMe
+    ? `${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="copyMessage(this); closeOpenMenu()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy
+        </div>` : ""}
+        ${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="editMessage('${id}', this); closeOpenMenu()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit
+        </div>` : ""}
+        <div class="menuItem danger" onclick="deleteMessage('${id}', this); closeOpenMenu()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg> Delete
+        </div>`
+    : `${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="copyMessage(this); closeOpenMenu()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy
+        </div>` : ""}`;
+
+    let mediaContent = "";
+    let bubbleClass = "msg"; 
+
+    if (isImage) {
+        mediaContent = `<img src="${msg}" style="max-width:280px;border-radius:12px;display:block;margin-top:4px;">`;
+        bubbleClass = "msg msg-media-wrapper"; 
+    } else if (isVideo) {
+        mediaContent = `<video controls style="max-width:280px;border-radius:12px;display:block;margin-top:4px;"><source src="${msg}"></video>`;
+        bubbleClass = "msg msg-media-wrapper"; 
+    } else if (isDoc) {
+        const rawName = msg.split('/').pop();
+        const cleanNameString = rawName.substring(rawName.indexOf('_') + 1);
+        const fileName = decodeURIComponent(cleanNameString); 
+        
+        const pdfIcon = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>`;
+
+        const genericIcon = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>`;
+
+        const chosenIcon = isPdf ? pdfIcon : genericIcon;
+        
+        mediaContent = `
+            <a href="${msg}" target="_blank" class="doc-card">
+                <div class="doc-icon-frame">${chosenIcon}</div>
+                <div class="doc-meta">
+                    <div class="doc-name">${fileName}</div>
+                    <div class="doc-desc">Click to view/download</div>
+                </div>
+            </a>`;
+        bubbleClass = "msg msg-media-wrapper"; 
+    } else {
+    mediaContent = `<div class="text">${msg}${arguments[6] ? '<span class="editedTag">(edited)</span>' : ''}</div>`;
+}
+
+    const initials = name.slice(0, 2).toUpperCase();
+    const avatarDisplay = avatar 
+        ? `<img src="${avatar}" class="avatarCircle" style="object-fit:cover;">`
+        : `<div class="avatarCircle">${initials}</div>`;
+
+    if (isMe) {
+        div.classList.add("messageWrapper", "meWrapper");
+        div.innerHTML = `
+            <div class="msgRow">
+                <div class="bubbleCol">
+                    <div class="${bubbleClass} me">${quoteBlock}${mediaContent}</div>
+                    <span class="msgTime">${time}</span>
+                    <div class="reactionBar" id="reactions-${id}">${renderReactionBar(arguments[7], id)}</div>
+                </div>
+                <div class="msgActions meActions">${reactBtn}${menuBtn}</div>
+            </div>`;
+    } else {
+        div.classList.add("messageWrapper");
+        div.innerHTML = `
+            <div class="msgRow">
+                ${avatarDisplay}
+                <div class="bubbleCol">
+                    <div class="senderName">${name}</div>
+                    <div class="${bubbleClass}">${quoteBlock}${mediaContent}</div>
+                    <span class="msgTime">${time}</span>
+                    <div class="reactionBar" id="reactions-${id}">${renderReactionBar(arguments[7], id)}</div>
+                </div>
+                <div class="msgActions themActions">${reactBtn}${menuBtn}</div>
+            </div>`;
+    }
+    
+    const chat = document.getElementById("chat");
+    const isAtBottom = chat.scrollHeight - chat.scrollTop <= chat.clientHeight + 120;
+    chat.appendChild(div);
+    if (isAtBottom || isMe) chat.scrollTop = chat.scrollHeight;
+}
+
+function deleteMessage(id, btn) {
+    const wrapper = btn.closest(".messageWrapper");
+    wrapper.style.opacity = "0";
+    wrapper.style.transform = "scale(0.95)";
+    setTimeout(() => wrapper.remove(), 200);
+    socket.emit("deleteMessage", { id });
+}
+
+function copyMessage(btn) {
+    const text = btn.closest(".msgRow").querySelector(".text")?.innerText;
+    if (text) { navigator.clipboard.writeText(text); showToast("Copied!"); }
+}
+
+socket.on("messageDeleted", (data) => {
+    const el = document.querySelector(`[data-id="${data.id}"]`);
+    if (el) { el.style.opacity = "0"; setTimeout(() => el.remove(), 200); }
+});
+
+function sendMessage() {
+    const input = document.getElementById("msg");
+    if (!input.value.trim()) return;
+    if (isDM) socket.emit("dm", { from: username, to: dmTarget, msg: input.value, replyTo: replyingTo });
+    else socket.emit("message", { name: username, msg: input.value, room: currentRoom, replyTo: replyingTo });
+    input.value = "";
+    cancelReply();
+}
+
+document.getElementById("imageInput").addEventListener("change", async function () {
+    const file = this.files[0];
+    if (!file) return;
+    showToast("Uploading...");
+    const formData = new FormData();
+    formData.append("image", file);
+    try {
+        const res = await fetch("/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        if (!data.success) { showToast("Upload failed"); return; }
+        if (isDM) socket.emit("dm", { from: username, to: dmTarget, msg: data.url });
+        else socket.emit("message", { name: username, msg: data.url, room: currentRoom });
+        showToast("Uploaded!");
+    } catch (err) { showToast("Upload error"); }
+    this.value = "";
+});
+
+const agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+const AGORA_APP_ID = "affd93b1f9d84aa99e304aabe79347e4"; 
+
+async function startAgoraCall() {
+    if (!isDM || !dmTarget) { showToast("Open a DM first"); return; }
+    
+    const roomName = ["chatapp", username, dmTarget].sort().join("-");
+    
+    socket.emit("call-invite", { to: dmTarget, from: username, room: roomName });
+    showToast("Call started — waiting for " + dmTarget);
+    
+    await joinAgoraRoom(roomName);
+}
+
+socket.on("call-invite", ({ from, room }) => {
+    pendingAgoraRoom = room;
+    document.getElementById("callText").innerText = `📞 ${from} is calling...`;
+    document.getElementById("callPopup").style.display = "flex";
+});
+
+async function acceptAgoraCall() {
+    document.getElementById("callPopup").style.display = "none";
+    if (pendingAgoraRoom) {
+        await joinAgoraRoom(pendingAgoraRoom);
+    }
+}
+
+async function joinAgoraRoom(roomName) {
+    try {
+        document.getElementById("videoModal").style.display = "flex";
+        document.getElementById("videoCallTitle").innerText = `In Call: ${roomName.replace("chatapp-", "")}`;
+
+        const response = await fetch(`/get-agora-token?channel=${roomName}&uid=${username}`);
+        const data = await response.json();
+
+        await agoraClient.join(AGORA_APP_ID, roomName, data.token, username);
+
+        localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
+
+        const localPlayer = document.createElement("div");
+        localPlayer.id = `user-${username}`;
+        localPlayer.className = "video-tile"; 
+        localPlayer.addEventListener("click", toggleVideoZoom);
+        document.getElementById("video-streams").appendChild(localPlayer);
+
+        localTracks.videoTrack.play(localPlayer.id);
+
+        await agoraClient.publish([localTracks.audioTrack, localTracks.videoTrack]);
+
+    } catch (err) {
+        console.error("Agora join breakdown:", err);
+        showToast("Failed to connect to video feed");
+        leaveAgoraCall();
+    }
+}
+
+agoraClient.on("user-published", async (user, mediaType) => {
+    await agoraClient.subscribe(user, mediaType);
+    remoteUsers[user.uid] = user;
+
+    if (mediaType === "video") {
+        let remotePlayer = document.getElementById(`user-${user.uid}`);
+        if (!remotePlayer) {
+            remotePlayer = document.createElement("div");
+            remotePlayer.id = `user-${user.uid}`;
+            remotePlayer.className = "video-tile"; 
+            remotePlayer.addEventListener("click", toggleVideoZoom);
+            document.getElementById("video-streams").appendChild(remotePlayer);
+        }
+        user.videoTrack.play(remotePlayer.id);
+    }
+
+    if (mediaType === "audio") {
+        user.audioTrack.play();
+    }
+});
+
+agoraClient.on("user-unpublished", (user) => {
+    const remotePlayer = document.getElementById(`user-${user.uid}`);
+    if (remotePlayer) remotePlayer.remove();
+    delete remoteUsers[user.uid];
+});
+
+async function leaveAgoraCall() {
+    for (let trackName in localTracks) {
+        if (localTracks[trackName]) {
+            localTracks[trackName].stop();
+            localTracks[trackName].close();
+            localTracks[trackName] = null;
+        }
+    }
+
+    if (screenTrack) {
+        screenTrack.close();
+        screenTrack = null;
+    }
+
+    await agoraClient.leave();
+
+    document.getElementById("video-streams").innerHTML = "";
+    document.getElementById("videoModal").style.display = "none";
+    remoteUsers = {};
+    pendingAgoraRoom = null;
+    isMuted = false;
+    isVideoMuted = false;
+
+    document.querySelector("#muteBtn i").className = "fas fa-microphone";
+    document.getElementById("muteBtn").classList.remove("btn-disabled-active");
+    document.querySelector("#videoBtn i").className = "fas fa-video";
+    document.getElementById("videoBtn").classList.remove("btn-disabled-active");
+    document.querySelector("#screenShareBtn i").className = "fas fa-desktop";
+    document.getElementById("screenShareBtn").classList.remove("btn-disabled-active");
+    document.getElementById("video-streams").classList.remove("focus-active");
+
+    showToast("Call ended");
+}
+
+// --- Native Control Features ---
+
+async function toggleAudio() {
+    if (!localTracks.audioTrack) return; 
+    
+    isMuted = !isMuted; 
+    await localTracks.audioTrack.setEnabled(!isMuted);
+    
+    const muteBtn = document.getElementById("muteBtn");
+    const muteIcon = muteBtn.querySelector("i");
+    
+    if (isMuted) {
+        muteIcon.className = "fas fa-microphone-slash"; 
+        muteBtn.classList.add("btn-disabled-active");   
+    } else {
+        muteIcon.className = "fas fa-microphone";       
+        muteBtn.classList.remove("btn-disabled-active"); 
+    }
+}
+
+async function toggleVideo() {
+    if (!localTracks.videoTrack) return; 
+    
+    isVideoMuted = !isVideoMuted;
+    await localTracks.videoTrack.setEnabled(!isVideoMuted);
+    
+    const videoBtn = document.getElementById("videoBtn");
+    const videoIcon = videoBtn.querySelector("i");
+    
+    if (isVideoMuted) {
+        videoIcon.className = "fas fa-video-slash";     
+        videoBtn.classList.add("btn-disabled-active");    
+    } else {
+        videoIcon.className = "fas fa-video";           
+        videoBtn.classList.remove("btn-disabled-active"); 
+    }
+}
+
+async function toggleScreenShare() {
+    const shareBtn = document.getElementById("screenShareBtn");
+    const shareIcon = shareBtn.querySelector("i");
+    
+    if (screenTrack) {
+        stopScreenShare();
+        shareIcon.className = "fas fa-desktop";
+        shareBtn.classList.remove("btn-disabled-active");
+        return;
+    }
+
+    try {
+        screenTrack = await AgoraRTC.createScreenVideoTrack({ optimizationMode: "detail" });
+
+        await agoraClient.unpublish(localTracks.videoTrack);
+        await agoraClient.publish(screenTrack);
+        screenTrack.play(`user-${username}`);
+
+        shareIcon.className = "fas fa-stop"; 
+        shareBtn.classList.add("btn-disabled-active");
+
+        screenTrack.on("track-ended", () => {
+            stopScreenShare();
+            shareIcon.className = "fas fa-desktop";
+            shareBtn.classList.remove("btn-disabled-active");
+        });
+
+    } catch (err) {
+        console.error("Screen share was cancelled or failed:", err);
+    }
+}
+
+async function stopScreenShare() {
+    if (screenTrack) {
+        screenTrack.close(); 
+        await agoraClient.unpublish(screenTrack); 
+        screenTrack = null;
+        
+        if (localTracks.videoTrack) {
+            await agoraClient.publish(localTracks.videoTrack);
+            localTracks.videoTrack.play(`user-${username}`);
+        }
+    }
+}
+
+function toggleVideoZoom(event) {
+    const clickedTile = event.currentTarget;
+    const container = document.getElementById("video-streams");
+    
+    if (clickedTile.classList.contains("expanded-stream")) {
+        container.classList.remove("focus-active");
+        document.querySelectorAll(".video-tile").forEach(tile => {
+            tile.classList.remove("expanded-stream", "floating-pip");
+        });
+        return;
+    }
+    
+    container.classList.add("focus-active");
+    
+    document.querySelectorAll(".video-tile").forEach(tile => {
+        if (tile === clickedTile) {
+            tile.classList.add("expanded-stream");
+            tile.classList.remove("floating-pip");
+        } else {
+            tile.classList.add("floating-pip");
+            tile.classList.remove("expanded-stream");
+        }
+    });
+}
+
+function openSettingsModal() {
+    document.getElementById("settingsUsernameDisplay").innerText = username;
+    const preview = document.getElementById("modalAvatarPreview");
+    preview.innerText = username.slice(0, 2).toUpperCase();
+    
+    document.getElementById("settingsModal").style.display = "flex";
+}
+
+function closeSettingsModal() {
+    document.getElementById("settingsModal").style.display = "none";
+}
+
+function previewAvatar(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById("modalAvatarPreview");
+            preview.innerText = ""; 
+            preview.style.backgroundImage = `url('${e.target.result}')`;
+            preview.style.backgroundSize = "cover";
+            preview.style.backgroundPosition = "center";
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function saveUserProfile() {
+    const fileInput = document.getElementById("avatarUploadInput");
+    if (!fileInput.files[0]) {
+        closeSettingsModal();
+        return;
+    }
+    showToast("Saving Profile...");
+    const formData = new FormData();
+    formData.append("avatar", fileInput.files[0]);
+
+    fetch("/update-profile", { method: "POST", body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                userAvatar = data.avatar;
+                showToast("Profile Updated!");
+                closeSettingsModal();
+                loadUsers(); 
+            } else {
+                showToast("Update failed");
+            }
+        })
+        .catch(() => showToast("Error connecting to server"));
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const output = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
+    return output;
+}
+
+async function registerPushNotifications() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+        const { publicKey } = await fetch('/vapid-public-key').then(r => r.json());
+        const subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
+        await fetch('/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription })
+        });
+    } catch (err) {
+        console.error('Push setup failed:', err);
+    }
+}
+
+function playNotificationSound() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+        oscillator.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.3);
+    } catch(e) {}
+}
+
+function editMessage(id, btn) {
+    const wrapper = btn.closest(".messageWrapper");
+    const textDiv = wrapper.querySelector(".text");
+    if (!textDiv) return;
+    
+    const clone = textDiv.cloneNode(true);
+    clone.querySelector('.editedTag')?.remove();
+    const currentText = clone.innerText.trim();
+    
+    let confirmed = false, cancelled = false;
+    
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = currentText;
+    input.className = "editInput";
+    textDiv.replaceWith(input);
+    input.focus();
+    input.select();
+    
+    function confirmEdit() {
+        if (cancelled) return;
+        confirmed = true;
+        const newMsg = input.value.trim();
+        if (newMsg && newMsg !== currentText) {
+            socket.emit("editMessage", { id, msg: newMsg });
+        }
+        const newDiv = document.createElement("div");
+        newDiv.className = "text";
+        newDiv.innerHTML = (newMsg || currentText) + (newMsg !== currentText ? '<span class="editedTag">(edited)</span>' : '');
+        input.replaceWith(newDiv);
+    }
+    
+    function cancelEdit() {
+        cancelled = true;
+        const newDiv = document.createElement("div");
+        newDiv.className = "text";
+        newDiv.innerHTML = textDiv.innerHTML;
+        input.replaceWith(newDiv);
+    }
+    
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); confirmEdit(); }
+        if (e.key === "Escape") cancelEdit();
+    });
+    input.addEventListener("blur", () => { if (!confirmed && !cancelled) confirmEdit(); });
+}
+
+socket.on("messageEdited", (data) => {
+    const el = document.querySelector(`[data-id="${data.id}"]`);
+    if (!el) return;
+    const textDiv = el.querySelector(".text");
+    if (textDiv) textDiv.innerHTML = data.msg + '<span class="editedTag">(edited)</span>';
+});
+
+let currentReactId = null;
+
+function renderReactionBar(reactions, id) {
+    if (!reactions) return "";
+    const entries = Object.entries(reactions).filter(([, users]) => users.length > 0);
+    if (!entries.length) return "";
+    return entries.map(([emoji, users]) => {
+        const isMine = users.includes(username);
+        return `<span class="reactionBubble ${isMine ? 'mine' : ''}" 
+            data-id="${id}" data-emoji="${emoji}" 
+            onclick="toggleReact(this)" 
+            title="${users.join(', ')}">${emoji}${users.length > 1 ? ' ' + users.length : ''}</span>`;
+    }).join("");
+}
+
+function toggleReact(el) {
+    socket.emit("reactMessage", { id: el.dataset.id, emoji: el.dataset.emoji, username });
+}
+
+function showEmojiPicker(id, btn) {
+    currentReactId = id;
+    const picker = document.getElementById("emojiPicker");
+    const rect = btn.getBoundingClientRect();
+    picker.style.display = "flex";
+    picker.style.top = (rect.top - 55) + "px";
+    picker.style.left = Math.min(rect.left, window.innerWidth - 220) + "px";
+    picker.querySelectorAll("span").forEach(span => {
+        span.onclick = () => {
+            socket.emit("reactMessage", { id: currentReactId, emoji: span.dataset.emoji, username });
+            picker.style.display = "none";
+        };
+    });
+    setTimeout(() => document.addEventListener("click", () => picker.style.display = "none", { once: true }), 0);
+}
+
+socket.on("messageReacted", (data) => {
+    const bar = document.getElementById("reactions-" + data.id);
+    if (bar) bar.innerHTML = renderReactionBar(data.reactions, data.id);
+});
+
+let menuTargetId = null;
+let menuTargetBtn = null;
+
+function closeOpenMenu() {
+    const menu = document.getElementById("msgMenu");
+    menu.classList.remove("open");
+    document.querySelectorAll(".messageWrapper").forEach(w => w.classList.remove("menu-open"));
+    menuTargetId = null;
+    menuTargetBtn = null;
+    document.body.classList.remove("menu-open-state");
+}
+
+function showMsgMenu(e, btn) {
+    e.stopPropagation();
+    const menu = document.getElementById("msgMenu");
+    const isOpen = menu.classList.contains("open") && menuTargetBtn === btn;
+    closeOpenMenu();
+    if (isOpen) return;
+
+    menuTargetId = btn.dataset.id;
+    menuTargetBtn = btn;
+    const isMe = btn.dataset.isMe === "true";
+    const isMedia = btn.dataset.isMedia === "true";
+
+    document.getElementById("menuCopy").style.display = (!isMedia) ? "flex" : "none";
+    document.getElementById("menuEdit").style.display = (isMe && !isMedia) ? "flex" : "none";
+    document.getElementById("menuDelete").style.display = isMe ? "flex" : "none";
+
+    document.getElementById("menuReply").onclick = () => { setReply(menuTargetId); closeOpenMenu(); };
+    document.getElementById("menuCopy").onclick = () => { copyMessageById(menuTargetId); closeOpenMenu(); };
+    document.getElementById("menuEdit").onclick = () => { editMessageById(menuTargetId); closeOpenMenu(); };
+    document.getElementById("menuDelete").onclick = () => { deleteMessageById(menuTargetId); closeOpenMenu(); };
+
+    const rect = btn.getBoundingClientRect();
+    const menuH = 140;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > menuH ? rect.bottom + 4 : rect.top - menuH - 4;
+    const left = Math.min(rect.left, window.innerWidth - 150);
+
+    menu.style.top = top + "px";
+    menu.style.left = left + "px";
+    menu.classList.add("open");
+
+    btn.closest(".messageWrapper").classList.add("menu-open");
+    document.body.classList.add("menu-open-state");
+}
+
+document.addEventListener("click", (e) => {
+    if (!e.target.closest("#msgMenu") && !e.target.closest(".menuDotBtn")) closeOpenMenu();
+});
+
+function copyMessageById(id) {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    const text = el?.querySelector(".text")?.innerText;
+    if (text) { navigator.clipboard.writeText(text); showToast("Copied!"); }
+}
+
+function editMessageById(id) {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    const btn = el?.querySelector(".menuDotBtn");
+    if (btn) editMessage(id, btn);
+}
+
+function deleteMessageById(id) {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    if (!el) return;
+    el.style.opacity = "0";
+    el.style.transform = "scale(0.95)";
+    setTimeout(() => el.remove(), 200);
+    socket.emit("deleteMessage", { id });
+}
+
+function setReply(id) {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    if (!el) return;
+    const name = el.dataset.name || username;
+    const textEl = el.querySelector(".text");
+    const msg = textEl ? textEl.innerText.replace("(edited)", "").trim() : "📎 Attachment";
+    replyingTo = { id, name, msg };
+    document.getElementById("replyPreviewName").innerText = name;
+    document.getElementById("replyPreviewMsg").innerText = msg.length > 60 ? msg.substring(0, 60) + "..." : msg;
+    document.getElementById("replyPreview").style.display = "flex";
+    document.getElementById("msg").focus();
+}
+
+function cancelReply() {
+    replyingTo = null;
+    document.getElementById("replyPreview").style.display = "none";
+}
+
+function scrollToMessage(id) {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("highlight");
+    setTimeout(() => el.classList.remove("highlight"), 1500);
+}
+
+// ── TYPING ──
+let typingTimeout;
+socket.on("userTyping", (data) => {
+    if (isDM && dmTarget === data.from) {
+        document.getElementById("chatHeaderStatus").innerText = "typing...";
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            const isOnline = onlineUsers.includes(dmTarget);
+            document.getElementById("chatHeaderStatus").innerText = isOnline ? "🟢 Online" : "Offline";
+        }, 2000);
+    }
+});
+</script>
+</body>
+</html>
