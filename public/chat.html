@@ -115,6 +115,15 @@
     </button>
 </div>
 
+<div id="emojiPicker">
+    <span data-emoji="👍">👍</span>
+    <span data-emoji="❤️">❤️</span>
+    <span data-emoji="😂">😂</span>
+    <span data-emoji="😮">😮</span>
+    <span data-emoji="😢">😢</span>
+    <span data-emoji="🔥">🔥</span>
+</div>
+
 <div id="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -259,7 +268,7 @@ socket.on("loadMessages", (messages) => {
     messages.forEach((data) => {
         const t = new Date(data.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         insertDateDivider(getDateLabel(data.time));
-        renderMessage(data.name, data.msg, data.name === username, t, data._id, data.avatar, data.edited);
+        renderMessage(data.name, data.msg, data.name === username, t, data._id, data.avatar, data.edited, data.reactions);
     });
 });
 
@@ -289,6 +298,9 @@ function renderMessage(name, msg, isMe, time, id, avatar) {
     const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/") && !isPdf;
     const isDoc = (msg.includes("cloudinary.com") && msg.includes("/raw/upload/")) || isPdf;
 
+    const reactBtn = `<button class="actionBtn" onclick="showEmojiPicker('${id}', this)" title="React">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+</button>`;
     const editBtn = (isMe && !isImage && !isVideo && !isDoc) ? `<button class="actionBtn" onclick="editMessage('${id}', this)" title="Edit">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
 </button>` : "";
@@ -357,8 +369,9 @@ function renderMessage(name, msg, isMe, time, id, avatar) {
                 <div class="bubbleCol">
                     <div class="${bubbleClass} me">${mediaContent}</div>
                     <span class="msgTime">${time}</span>
+                    <div class="reactionBar" id="reactions-${id}">${renderReactionBar(arguments[7], id)}</div>
                 </div>
-                <div class="msgActions meActions">${copyBtn}${editBtn}${deleteBtn}</div>
+                <div class="msgActions meActions">${copyBtn}${editBtn}${reactBtn}${deleteBtn}</div>
             </div>`;
     } else {
         div.classList.add("messageWrapper");
@@ -369,8 +382,9 @@ function renderMessage(name, msg, isMe, time, id, avatar) {
                     <div class="senderName">${name}</div>
                     <div class="${bubbleClass}">${mediaContent}</div>
                     <span class="msgTime">${time}</span>
+                    <div class="reactionBar" id="reactions-${id}">${renderReactionBar(arguments[7], id)}</div>
                 </div>
-                <div class="msgActions themActions">${copyBtn}</div>
+                <div class="msgActions themActions">${reactBtn}${copyBtn}</div>
             </div>`;
     }
     
@@ -798,6 +812,46 @@ socket.on("messageEdited", (data) => {
     if (!el) return;
     const textDiv = el.querySelector(".text");
     if (textDiv) textDiv.innerHTML = data.msg + '<span class="editedTag">(edited)</span>';
+});
+
+let currentReactId = null;
+
+function renderReactionBar(reactions, id) {
+    if (!reactions) return "";
+    const entries = Object.entries(reactions).filter(([, users]) => users.length > 0);
+    if (!entries.length) return "";
+    return entries.map(([emoji, users]) => {
+        const isMine = users.includes(username);
+        return `<span class="reactionBubble ${isMine ? 'mine' : ''}" 
+            data-id="${id}" data-emoji="${emoji}" 
+            onclick="toggleReact(this)" 
+            title="${users.join(', ')}">${emoji}${users.length > 1 ? ' ' + users.length : ''}</span>`;
+    }).join("");
+}
+
+function toggleReact(el) {
+    socket.emit("reactMessage", { id: el.dataset.id, emoji: el.dataset.emoji, username });
+}
+
+function showEmojiPicker(id, btn) {
+    currentReactId = id;
+    const picker = document.getElementById("emojiPicker");
+    const rect = btn.getBoundingClientRect();
+    picker.style.display = "flex";
+    picker.style.top = (rect.top - 55) + "px";
+    picker.style.left = Math.min(rect.left, window.innerWidth - 220) + "px";
+    picker.querySelectorAll("span").forEach(span => {
+        span.onclick = () => {
+            socket.emit("reactMessage", { id: currentReactId, emoji: span.dataset.emoji, username });
+            picker.style.display = "none";
+        };
+    });
+    setTimeout(() => document.addEventListener("click", () => picker.style.display = "none", { once: true }), 0);
+}
+
+socket.on("messageReacted", (data) => {
+    const bar = document.getElementById("reactions-" + data.id);
+    if (bar) bar.innerHTML = renderReactionBar(data.reactions, data.id);
 });
 
 // ── TYPING ──

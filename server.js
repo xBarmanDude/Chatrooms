@@ -38,7 +38,8 @@ const Message = mongoose.model("Message", new mongoose.Schema({
     to: String,
     isDM: { type: Boolean, default: false },
     time: { type: Date, default: Date.now },
-edited: { type: Boolean, default: false }
+edited: { type: Boolean, default: false },
+reactions: { type: Map, of: [String], default: new Map() }
 }));
 
 const User = mongoose.model("User", new mongoose.Schema({
@@ -226,6 +227,28 @@ socket.on("subscribeAllDMs", async (myUsername) => {
     users.forEach(u => {
         const dmRoom = [myUsername, u.username].sort().join("_");
         socket.join(dmRoom);
+    });
+});
+
+socket.on("reactMessage", async (data) => {
+    if (!data?.id || !data?.emoji || !data?.username) return;
+    const message = await Message.findById(data.id);
+    if (!message) return;
+
+    if (!message.reactions) message.reactions = new Map();
+    const users = message.reactions.get(data.emoji) || [];
+    const idx = users.indexOf(data.username);
+
+    if (idx === -1) users.push(data.username);
+    else users.splice(idx, 1);
+
+    if (users.length === 0) message.reactions.delete(data.emoji);
+    else message.reactions.set(data.emoji, users);
+
+    await message.save();
+    io.to(message.room).emit("messageReacted", {
+        id: data.id,
+        reactions: Object.fromEntries(message.reactions)
     });
 });
 

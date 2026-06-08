@@ -856,11 +856,54 @@ body {
         font-size: 14px;
         width: 100%;
         outline: none;
-    }
+}
 .editedTag {
         font-size: 10px;
         opacity: 0.5;
         margin-left: 4px;
-    }
+}
+
+#emojiPicker {
+    display: none;
+    position: fixed;
+    background: rgba(30, 30, 40, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 30px;
+    padding: 6px 10px;
+    gap: 6px;
+    z-index: 9999;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+#emojiPicker span {
+    font-size: 20px;
+    cursor: pointer;
+    transition: transform 0.15s;
+    user-select: none;
+}
+#emojiPicker span:hover { transform: scale(1.3); }
+
+.reactionBar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+    min-height: 0;
+}
+.reactionBubble {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 2px 7px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+}
+.reactionBubble:hover { background: rgba(255,255,255,0.15); }
+.reactionBubble.mine {
+    background: rgba(0, 200, 83, 0.15);
+    border-color: #00c853;
+}
 
 * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
