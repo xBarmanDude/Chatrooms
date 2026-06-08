@@ -999,22 +999,20 @@ body.menu-open-state .messageWrapper:not(.menu-open):hover .msgActions { opacity
 #replyCloseBtn:hover { color: white; }
 
 .quoteBlock {
-    background: rgba(0,0,0,0.3);
+    background: rgba(255,255,255,0.05);
     border-left: 2px solid #00c853;
-    border-radius: 4px;
-    padding: 3px 7px;
-    margin-bottom: 4px;
+    border-radius: 8px;
+    padding: 4px 10px;
+    margin-bottom: 2px;
     cursor: pointer;
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
+    width: fit-content;
+    max-width: 240px;
     overflow: hidden;
     transition: background 0.15s;
 }
-
-.quoteBlock:hover { background: rgba(0,0,0,0.4); }
+.quoteBlock:hover { background: rgba(255,255,255,0.09); }
 .quoteAuthor {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 600;
     color: #00c853;
     margin-bottom: 1px;
@@ -1022,12 +1020,12 @@ body.menu-open-state .messageWrapper:not(.menu-open):hover .msgActions { opacity
     white-space: nowrap;
 }
 .quoteMsg {
-    font-size: 10px;
+    font-size: 11px;
     color: rgba(255,255,255,0.4);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    width: 100%;
+    max-width: 220px;
     font-family: 'Inter', sans-serif;
 }
 

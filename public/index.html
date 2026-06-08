@@ -412,7 +412,7 @@ const menuItems = isMe
         div.innerHTML = `
             <div class="msgRow">
                 <div class="bubbleCol">
-                    <div class="${bubbleClass} me">${quoteBlock}${mediaContent}</div>
+                    ${quoteBlock}<div class="${bubbleClass} me">${mediaContent}</div>
                     <span class="msgTime">${time}</span>
                     <div class="reactionBar" id="reactions-${id}">${renderReactionBar(arguments[7], id)}</div>
                 </div>
@@ -425,7 +425,7 @@ const menuItems = isMe
                 ${avatarDisplay}
                 <div class="bubbleCol">
                     <div class="senderName">${name}</div>
-                    <div class="${bubbleClass}">${quoteBlock}${mediaContent}</div>
+                    ${quoteBlock}<div class="${bubbleClass}">${mediaContent}</div>
                     <span class="msgTime">${time}</span>
                     <div class="reactionBar" id="reactions-${id}">${renderReactionBar(arguments[7], id)}</div>
                 </div>
