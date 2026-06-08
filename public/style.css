@@ -270,7 +270,7 @@ body {
     margin-bottom: 2px;
 }
 
-.bubbleCol { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bubbleCol { display: flex; flex-direction: column; gap: 2px; min-width: 0; align-items: flex-end; }
 .senderName { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.35); padding-left: 2px; margin-bottom: 2px; }
 
 .msgActions {
@@ -298,7 +298,7 @@ body {
 /* ── BUBBLES ── */
 .msg {
     display: inline-block;
-    max-width: 420px;
+    max-width: 75%;
     padding: 12px 18px;
     border-radius: 20px;
     word-break: break-word;
@@ -1005,9 +1005,10 @@ body.menu-open-state .messageWrapper:not(.menu-open):hover .msgActions { opacity
     padding: 3px 7px;
     margin-bottom: 4px;
     cursor: pointer;
-    display: inline-block;
-    max-width: 100%;
+    display: block;
+    width: 100%;
     box-sizing: border-box;
+    overflow: hidden;
     transition: background 0.15s;
 }
 .quoteBlock:hover { background: rgba(0,0,0,0.4); }
@@ -1025,7 +1026,7 @@ body.menu-open-state .messageWrapper:not(.menu-open):hover .msgActions { opacity
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 180px;
+    width: 100%;
     font-family: 'Inter', sans-serif;
 }
 
