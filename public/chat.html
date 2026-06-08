@@ -43,6 +43,16 @@
         </div>
         <div id="chat"></div>
         <div id="inputArea">
+            <div id="replyPreview" style="display:none">
+    <div id="replyPreviewInner">
+        <div id="replyPreviewBar"></div>
+        <div id="replyPreviewText">
+            <div id="replyPreviewName"></div>
+            <div id="replyPreviewMsg"></div>
+        </div>
+    </div>
+    <button onclick="cancelReply()" id="replyCloseBtn">✕</button>
+</div>
             <div id="inputBox">
                 <input type="file" id="imageInput" style="display:none">
                 <button class="attachBtn" onclick="document.getElementById('imageInput').click()" title="Attach file">
@@ -125,6 +135,9 @@
 </div>
 
 <div id="msgMenu" class="msgDropdown">
+    <div class="menuItem" id="menuReply">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 00-4-4H4"/></svg> Reply
+</div>
     <div class="menuItem" id="menuCopy" style="display:none">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy
     </div>
@@ -158,6 +171,7 @@ let pendingAgoraRoom = null;
 let isMuted = false;
 let isVideoMuted = false;
 let screenTrack = null;
+let replyingTo = null;
 
 fetch("/session")
     .then(r => r.json())
@@ -280,7 +294,7 @@ socket.on("loadMessages", (messages) => {
     messages.forEach((data) => {
         const t = new Date(data.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         insertDateDivider(getDateLabel(data.time));
-        renderMessage(data.name, data.msg, data.name === username, t, data._id, data.avatar, data.edited, data.reactions);
+        renderMessage(data.name, data.msg, data.name === username, t, data._id, data.avatar, data.edited, data.reactions, data.replyTo);
     });
 });
 
@@ -297,13 +311,19 @@ socket.on("message", (data) => {
     if (!inDM && currentRoom !== data.room) return;
     insertDateDivider(getDateLabel(data.time || new Date()));
     if (data.name !== username) playNotificationSound();
-    renderMessage(data.name, data.msg, data.name === username, null, data._id, data.avatar);
+    renderMessage(data.name, data.msg, data.name === username, null, data._id, data.avatar, data.edited, data.reactions, data.replyTo);
 });
 
 function renderMessage(name, msg, isMe, time, id, avatar) {
     time = time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const div = document.createElement("div");
     div.setAttribute("data-id", id || "");
+div.setAttribute("data-name", name);
+const replyTo = arguments[8];
+const quoteBlock = replyTo ? `<div class="quoteBlock" onclick="scrollToMessage('${replyTo.id}')">
+    <div class="quoteAuthor">${replyTo.name}</div>
+    <div class="quoteMsg">${replyTo.msg && replyTo.msg.startsWith('https://') ? '📎 Attachment' : (replyTo.msg||'').substring(0,80)}</div>
+</div>` : "";
 
     const isVideo = msg.includes("cloudinary.com") && msg.includes("/video/upload/");
     const isPdf = msg.toLowerCase().includes(".pdf");
@@ -392,7 +412,7 @@ const menuItems = isMe
         div.innerHTML = `
             <div class="msgRow">
                 <div class="bubbleCol">
-                    <div class="${bubbleClass} me">${mediaContent}</div>
+                    <div class="${bubbleClass} me">${quoteBlock}${mediaContent}</div>
                     <span class="msgTime">${time}</span>
                     <div class="reactionBar" id="reactions-${id}">${renderReactionBar(arguments[7], id)}</div>
                 </div>
@@ -405,7 +425,7 @@ const menuItems = isMe
                 ${avatarDisplay}
                 <div class="bubbleCol">
                     <div class="senderName">${name}</div>
-                    <div class="${bubbleClass}">${mediaContent}</div>
+                    <div class="${bubbleClass}">${quoteBlock}${mediaContent}</div>
                     <span class="msgTime">${time}</span>
                     <div class="reactionBar" id="reactions-${id}">${renderReactionBar(arguments[7], id)}</div>
                 </div>
@@ -440,9 +460,10 @@ socket.on("messageDeleted", (data) => {
 function sendMessage() {
     const input = document.getElementById("msg");
     if (!input.value.trim()) return;
-    if (isDM) socket.emit("dm", { from: username, to: dmTarget, msg: input.value });
-    else socket.emit("message", { name: username, msg: input.value, room: currentRoom });
+    if (isDM) socket.emit("dm", { from: username, to: dmTarget, msg: input.value, replyTo: replyingTo });
+    else socket.emit("message", { name: username, msg: input.value, room: currentRoom, replyTo: replyingTo });
     input.value = "";
+    cancelReply();
 }
 
 document.getElementById("imageInput").addEventListener("change", async function () {
@@ -907,6 +928,7 @@ function showMsgMenu(e, btn) {
     document.getElementById("menuEdit").style.display = (isMe && !isMedia) ? "flex" : "none";
     document.getElementById("menuDelete").style.display = isMe ? "flex" : "none";
 
+    document.getElementById("menuReply").onclick = () => { setReply(menuTargetId); closeOpenMenu(); };
     document.getElementById("menuCopy").onclick = () => { copyMessageById(menuTargetId); closeOpenMenu(); };
     document.getElementById("menuEdit").onclick = () => { editMessageById(menuTargetId); closeOpenMenu(); };
     document.getElementById("menuDelete").onclick = () => { deleteMessageById(menuTargetId); closeOpenMenu(); };
@@ -948,6 +970,32 @@ function deleteMessageById(id) {
     el.style.transform = "scale(0.95)";
     setTimeout(() => el.remove(), 200);
     socket.emit("deleteMessage", { id });
+}
+
+function setReply(id) {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    if (!el) return;
+    const name = el.dataset.name || username;
+    const textEl = el.querySelector(".text");
+    const msg = textEl ? textEl.innerText.replace("(edited)", "").trim() : "📎 Attachment";
+    replyingTo = { id, name, msg };
+    document.getElementById("replyPreviewName").innerText = name;
+    document.getElementById("replyPreviewMsg").innerText = msg.length > 60 ? msg.substring(0, 60) + "..." : msg;
+    document.getElementById("replyPreview").style.display = "flex";
+    document.getElementById("msg").focus();
+}
+
+function cancelReply() {
+    replyingTo = null;
+    document.getElementById("replyPreview").style.display = "none";
+}
+
+function scrollToMessage(id) {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("highlight");
+    setTimeout(() => el.classList.remove("highlight"), 1500);
 }
 
 // ── TYPING ──

@@ -949,5 +949,87 @@ body {
 .messageWrapper.menu-open .msgActions { opacity: 1; }
 body.menu-open-state .messageWrapper:not(.menu-open):hover .msgActions { opacity: 0; }
 
+#replyPreview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(0, 200, 83, 0.08);
+    border-left: 3px solid #00c853;
+    margin: 0 8px 6px 8px;
+    border-radius: 8px;
+    gap: 10px;
+}
+#replyPreviewInner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+}
+#replyPreviewBar {
+    width: 3px;
+    min-width: 3px;
+    height: 32px;
+    background: #00c853;
+    border-radius: 3px;
+}
+#replyPreviewName {
+    font-size: 12px;
+    font-weight: 600;
+    color: #00c853;
+    font-family: 'Inter', sans-serif;
+}
+#replyPreviewMsg {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: 'Inter', sans-serif;
+}
+#replyCloseBtn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 4px;
+    flex-shrink: 0;
+}
+#replyCloseBtn:hover { color: white; }
+
+.quoteBlock {
+    background: rgba(255,255,255,0.07);
+    border-left: 3px solid #00c853;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.quoteBlock:hover { background: rgba(255,255,255,0.12); }
+.quoteAuthor {
+    font-size: 11px;
+    font-weight: 600;
+    color: #00c853;
+    margin-bottom: 2px;
+    font-family: 'Inter', sans-serif;
+}
+.quoteMsg {
+    font-size: 12px;
+    color: rgba(255,255,255,0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: 'Inter', sans-serif;
+}
+
+.messageWrapper.highlight {
+    animation: highlightPulse 1.5s ease;
+}
+@keyframes highlightPulse {
+    0%   { background: rgba(0,200,83,0.15); border-radius: 12px; }
+    100% { background: transparent; }
+}
 
 * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }

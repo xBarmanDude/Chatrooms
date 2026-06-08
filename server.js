@@ -39,7 +39,8 @@ const Message = mongoose.model("Message", new mongoose.Schema({
     isDM: { type: Boolean, default: false },
     time: { type: Date, default: Date.now },
 edited: { type: Boolean, default: false },
-reactions: { type: Map, of: [String], default: new Map() }
+reactions: { type: Map, of: [String], default: new Map() },
+replyTo: { id: String, name: String, msg: String }
 }));
 
 const User = mongoose.model("User", new mongoose.Schema({
@@ -314,7 +315,7 @@ socket.on("dm", async (data) => {
     const user = await User.findOne({ username: from }, "avatar");
 
     const newMsg = await Message.create({
-        name: from, avatar: user?.avatar || "", msg, room: dmRoom, to, isDM: true
+        name: from, avatar: user?.avatar || "", msg, room: dmRoom, to, isDM: true, replyTo: data.replyTo || null
     });
 
     io.to(dmRoom).emit("message", newMsg);
@@ -347,7 +348,8 @@ socket.on("message", async (data) => {
         avatar: user?.avatar || "",
         msg: data.msg, 
         room: room,
-        isDM: false 
+        isDM: false,
+        replyTo: data.replyTo || null 
     });
 
     io.to(room).emit("message", newMsg);
