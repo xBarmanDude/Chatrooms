@@ -908,27 +908,20 @@ body {
 
 .msgDropdown {
     display: none;
-    position: absolute;
+    position: fixed;
     background: rgba(25, 25, 35, 0.97);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 12px;
     padding: 6px;
     min-width: 130px;
-    z-index: 999;
-    top: 100%;
-    margin-top: 4px;
-    right: 0;
+    z-index: 99999;
     box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     flex-direction: column;
     gap: 2px;
 }
-.msgDropdown.open {
-    display: flex;
-}
-.menuDotBtn {
-    position: relative;
-}
+.msgDropdown.open { display: flex; }
+
 .menuItem {
     display: flex;
     align-items: center;
@@ -953,9 +946,8 @@ body {
     transition: opacity 0.15s;
 }
 .messageWrapper:hover .msgActions { opacity: 1; }
-
 .messageWrapper.menu-open .msgActions { opacity: 1; }
-
+body.menu-open-state .messageWrapper:not(.menu-open):hover .msgActions { opacity: 0; }
 
 
 * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }

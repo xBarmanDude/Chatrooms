@@ -115,13 +115,16 @@
     </button>
 </div>
 
-<div id="emojiPicker">
-    <span data-emoji="👍">👍</span>
-    <span data-emoji="❤️">❤️</span>
-    <span data-emoji="😂">😂</span>
-    <span data-emoji="😮">😮</span>
-    <span data-emoji="😢">😢</span>
-    <span data-emoji="🔥">🔥</span>
+<div id="msgMenu" class="msgDropdown">
+    <div class="menuItem" id="menuCopy" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy
+    </div>
+    <div class="menuItem" id="menuEdit" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit
+    </div>
+    <div class="menuItem danger" id="menuDelete" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg> Delete
+    </div>
 </div>
 
 <div id="toast"></div>
@@ -302,6 +305,15 @@ function renderMessage(name, msg, isMe, time, id, avatar) {
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
 </button>`;
 
+const menuBtn = `<button class="actionBtn menuDotBtn" 
+    data-id="${id}"
+    data-is-me="${isMe}"
+    data-is-media="${isImage || isVideo || isDoc}"
+    onclick="showMsgMenu(event, this)"
+    title="More">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+</button>`;
+
 const menuItems = isMe
     ? `${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="copyMessage(this); closeOpenMenu()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy
@@ -315,11 +327,6 @@ const menuItems = isMe
     : `${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="copyMessage(this); closeOpenMenu()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy
         </div>` : ""}`;
-
-const menuBtn = `<button class="actionBtn menuDotBtn" onclick="showMsgMenu(this)" title="More">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
-    <div class="msgDropdown">${menuItems}</div>
-</button>`;
 
     let mediaContent = "";
     let bubbleClass = "msg"; 
@@ -863,34 +870,76 @@ socket.on("messageReacted", (data) => {
     if (bar) bar.innerHTML = renderReactionBar(data.reactions, data.id);
 });
 
-let openDropdown = null;
-let openWrapper = null;
+let menuTargetId = null;
+let menuTargetBtn = null;
 
 function closeOpenMenu() {
-    if (openDropdown) {
-        openDropdown.classList.remove("open");
-        if (openWrapper) openWrapper.classList.remove("menu-open");
-        openDropdown = null;
-        openWrapper = null;
-    }
+    const menu = document.getElementById("msgMenu");
+    menu.classList.remove("open");
+    document.querySelectorAll(".messageWrapper").forEach(w => w.classList.remove("menu-open"));
+    menuTargetId = null;
+    menuTargetBtn = null;
+    document.body.classList.remove("menu-open-state");
 }
 
-function showMsgMenu(btn) {
-    const dropdown = btn.querySelector(".msgDropdown");
-    const wrapper = btn.closest(".messageWrapper");
-    const isOpen = dropdown.classList.contains("open");
+function showMsgMenu(e, btn) {
+    e.stopPropagation();
+    const menu = document.getElementById("msgMenu");
+    const isOpen = menu.classList.contains("open") && menuTargetBtn === btn;
     closeOpenMenu();
-    if (!isOpen) {
-        dropdown.classList.add("open");
-        wrapper.classList.add("menu-open");
-        openDropdown = dropdown;
-        openWrapper = wrapper;
-    }
+    if (isOpen) return;
+
+    menuTargetId = btn.dataset.id;
+    menuTargetBtn = btn;
+    const isMe = btn.dataset.isMe === "true";
+    const isMedia = btn.dataset.isMedia === "true";
+
+    document.getElementById("menuCopy").style.display = (!isMedia) ? "flex" : "none";
+    document.getElementById("menuEdit").style.display = (isMe && !isMedia) ? "flex" : "none";
+    document.getElementById("menuDelete").style.display = isMe ? "flex" : "none";
+
+    document.getElementById("menuCopy").onclick = () => { copyMessageById(menuTargetId); closeOpenMenu(); };
+    document.getElementById("menuEdit").onclick = () => { editMessageById(menuTargetId); closeOpenMenu(); };
+    document.getElementById("menuDelete").onclick = () => { deleteMessageById(menuTargetId); closeOpenMenu(); };
+
+    const rect = btn.getBoundingClientRect();
+    const menuH = 140;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > menuH ? rect.bottom + 4 : rect.top - menuH - 4;
+    const left = Math.min(rect.left, window.innerWidth - 150);
+
+    menu.style.top = top + "px";
+    menu.style.left = left + "px";
+    menu.classList.add("open");
+
+    btn.closest(".messageWrapper").classList.add("menu-open");
+    document.body.classList.add("menu-open-state");
 }
 
 document.addEventListener("click", (e) => {
-    if (!e.target.closest(".menuDotBtn")) closeOpenMenu();
+    if (!e.target.closest("#msgMenu") && !e.target.closest(".menuDotBtn")) closeOpenMenu();
 });
+
+function copyMessageById(id) {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    const text = el?.querySelector(".text")?.innerText;
+    if (text) { navigator.clipboard.writeText(text); showToast("Copied!"); }
+}
+
+function editMessageById(id) {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    const btn = el?.querySelector(".menuDotBtn");
+    if (btn) editMessage(id, btn);
+}
+
+function deleteMessageById(id) {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    if (!el) return;
+    el.style.opacity = "0";
+    el.style.transform = "scale(0.95)";
+    setTimeout(() => el.remove(), 200);
+    socket.emit("deleteMessage", { id });
+}
 
 // ── TYPING ──
 let typingTimeout;
