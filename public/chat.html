@@ -303,16 +303,16 @@ function renderMessage(name, msg, isMe, time, id, avatar) {
 </button>`;
 
 const menuItems = isMe
-    ? `${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="copyMessage(this)">
+    ? `${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="copyMessage(this); closeOpenMenu()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy
         </div>` : ""}
-        ${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="editMessage('${id}', this)">
+        ${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="editMessage('${id}', this); closeOpenMenu()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit
         </div>` : ""}
-        <div class="menuItem danger" onclick="deleteMessage('${id}', this)">
+        <div class="menuItem danger" onclick="deleteMessage('${id}', this); closeOpenMenu()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg> Delete
         </div>`
-    : `${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="copyMessage(this)">
+    : `${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="copyMessage(this); closeOpenMenu()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy
         </div>` : ""}`;
 
@@ -863,14 +863,34 @@ socket.on("messageReacted", (data) => {
     if (bar) bar.innerHTML = renderReactionBar(data.reactions, data.id);
 });
 
-function showMsgMenu(btn) {
-    document.querySelectorAll(".msgDropdown.open").forEach(d => d.classList.remove("open"));
-    const dropdown = btn.querySelector(".msgDropdown");
-    dropdown.classList.toggle("open");
-    setTimeout(() => document.addEventListener("click", () => {
-        dropdown.classList.remove("open");
-    }, { once: true }), 0);
+let openDropdown = null;
+let openWrapper = null;
+
+function closeOpenMenu() {
+    if (openDropdown) {
+        openDropdown.classList.remove("open");
+        if (openWrapper) openWrapper.classList.remove("menu-open");
+        openDropdown = null;
+        openWrapper = null;
+    }
 }
+
+function showMsgMenu(btn) {
+    const dropdown = btn.querySelector(".msgDropdown");
+    const wrapper = btn.closest(".messageWrapper");
+    const isOpen = dropdown.classList.contains("open");
+    closeOpenMenu();
+    if (!isOpen) {
+        dropdown.classList.add("open");
+        wrapper.classList.add("menu-open");
+        openDropdown = dropdown;
+        openWrapper = wrapper;
+    }
+}
+
+document.addEventListener("click", (e) => {
+    if (!e.target.closest(".menuDotBtn")) closeOpenMenu();
+});
 
 // ── TYPING ──
 let typingTimeout;
