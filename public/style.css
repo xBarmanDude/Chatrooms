@@ -906,4 +906,51 @@ body {
     border-color: #00c853;
 }
 
+.msgDropdown {
+    display: none;
+    position: absolute;
+    background: rgba(25, 25, 35, 0.97);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 6px;
+    min-width: 130px;
+    z-index: 999;
+    top: 28px;
+    right: 0;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    flex-direction: column;
+    gap: 2px;
+}
+.msgDropdown.open {
+    display: flex;
+}
+.menuDotBtn {
+    position: relative;
+}
+.menuItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+    transition: background 0.15s;
+    font-family: 'Inter', sans-serif;
+}
+.menuItem:hover { background: rgba(255,255,255,0.08); }
+.menuItem.danger { color: #ff4d4d; }
+.menuItem.danger:hover { background: rgba(255,77,77,0.1); }
+
+.msgActions {
+    opacity: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: opacity 0.15s;
+}
+.messageWrapper:hover .msgActions { opacity: 1; }
+
 * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }

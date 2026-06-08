@@ -298,19 +298,28 @@ function renderMessage(name, msg, isMe, time, id, avatar) {
     const isImage = msg.includes("cloudinary.com") && msg.includes("/image/upload/") && !isPdf;
     const isDoc = (msg.includes("cloudinary.com") && msg.includes("/raw/upload/")) || isPdf;
 
-    const reactBtn = `<button class="actionBtn" onclick="showEmojiPicker('${id}', this)" title="React">
+    const reactBtn = `<button class="actionBtn reactBtnIcon" onclick="showEmojiPicker('${id}', this)" title="React">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
 </button>`;
-    const editBtn = (isMe && !isImage && !isVideo && !isDoc) ? `<button class="actionBtn" onclick="editMessage('${id}', this)" title="Edit">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-</button>` : "";
-    const deleteBtn = isMe ? `<button class="actionBtn deleteBtn" onclick="deleteMessage('${id}', this)" title="Delete">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-    </button>` : "";
-    
-    const copyBtn = (!isImage && !isVideo && !isDoc) ? `<button class="actionBtn copyBtn" onclick="copyMessage(this)" title="Copy">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-    </button>` : "";
+
+const menuItems = isMe
+    ? `${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="copyMessage(this)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy
+        </div>` : ""}
+        ${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="editMessage('${id}', this)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit
+        </div>` : ""}
+        <div class="menuItem danger" onclick="deleteMessage('${id}', this)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg> Delete
+        </div>`
+    : `${(!isImage && !isVideo && !isDoc) ? `<div class="menuItem" onclick="copyMessage(this)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy
+        </div>` : ""}`;
+
+const menuBtn = `<button class="actionBtn menuDotBtn" onclick="showMsgMenu(this)" title="More">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+    <div class="msgDropdown">${menuItems}</div>
+</button>`;
 
     let mediaContent = "";
     let bubbleClass = "msg"; 
@@ -371,7 +380,7 @@ function renderMessage(name, msg, isMe, time, id, avatar) {
                     <span class="msgTime">${time}</span>
                     <div class="reactionBar" id="reactions-${id}">${renderReactionBar(arguments[7], id)}</div>
                 </div>
-                <div class="msgActions meActions">${copyBtn}${editBtn}${reactBtn}${deleteBtn}</div>
+                <div class="msgActions meActions">${reactBtn}${menuBtn}</div>
             </div>`;
     } else {
         div.classList.add("messageWrapper");
@@ -384,7 +393,7 @@ function renderMessage(name, msg, isMe, time, id, avatar) {
                     <span class="msgTime">${time}</span>
                     <div class="reactionBar" id="reactions-${id}">${renderReactionBar(arguments[7], id)}</div>
                 </div>
-                <div class="msgActions themActions">${reactBtn}${copyBtn}</div>
+                <div class="msgActions themActions">${reactBtn}${menuBtn}</div>
             </div>`;
     }
     
@@ -853,6 +862,15 @@ socket.on("messageReacted", (data) => {
     const bar = document.getElementById("reactions-" + data.id);
     if (bar) bar.innerHTML = renderReactionBar(data.reactions, data.id);
 });
+
+function showMsgMenu(btn) {
+    document.querySelectorAll(".msgDropdown.open").forEach(d => d.classList.remove("open"));
+    const dropdown = btn.querySelector(".msgDropdown");
+    dropdown.classList.toggle("open");
+    setTimeout(() => document.addEventListener("click", () => {
+        dropdown.classList.remove("open");
+    }, { once: true }), 0);
+}
 
 // ── TYPING ──
 let typingTimeout;
