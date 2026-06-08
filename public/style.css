@@ -953,35 +953,35 @@ body.menu-open-state .messageWrapper:not(.menu-open):hover .msgActions { opacity
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
-    background: rgba(0, 200, 83, 0.08);
-    border-left: 3px solid #00c853;
-    margin: 0 8px 6px 8px;
-    border-radius: 8px;
-    gap: 10px;
+    padding: 5px 10px;
+    background: rgba(0, 200, 83, 0.06);
+    border-left: 2px solid #00c853;
+    margin: 0 8px 4px 8px;
+    border-radius: 6px;
+    gap: 8px;
 }
 #replyPreviewInner {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     overflow: hidden;
 }
 #replyPreviewBar {
-    width: 3px;
-    min-width: 3px;
-    height: 32px;
+    width: 2px;
+    min-width: 2px;
+    height: 24px;
     background: #00c853;
-    border-radius: 3px;
+    border-radius: 2px;
 }
 #replyPreviewName {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: #00c853;
     font-family: 'Inter', sans-serif;
 }
 #replyPreviewMsg {
-    font-size: 12px;
-    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -990,38 +990,40 @@ body.menu-open-state .messageWrapper:not(.menu-open):hover .msgActions { opacity
 #replyCloseBtn {
     background: none;
     border: none;
-    color: rgba(255,255,255,0.4);
+    color: rgba(255,255,255,0.3);
     cursor: pointer;
-    font-size: 16px;
-    padding: 0 4px;
+    font-size: 14px;
+    padding: 0 2px;
     flex-shrink: 0;
 }
 #replyCloseBtn:hover { color: white; }
 
 .quoteBlock {
-    background: rgba(255,255,255,0.07);
-    border-left: 3px solid #00c853;
-    border-radius: 6px;
-    padding: 6px 10px;
-    margin-bottom: 6px;
+    background: rgba(255,255,255,0.05);
+    border-left: 2px solid #00c853;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin-bottom: 5px;
     cursor: pointer;
     transition: background 0.15s;
+    max-width: 100%;
 }
-.quoteBlock:hover { background: rgba(255,255,255,0.12); }
+.quoteBlock:hover { background: rgba(255,255,255,0.09); }
 .quoteAuthor {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: #00c853;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
     font-family: 'Inter', sans-serif;
 }
 .quoteMsg {
-    font-size: 12px;
-    color: rgba(255,255,255,0.55);
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     font-family: 'Inter', sans-serif;
+    max-width: 220px;
 }
 
 .messageWrapper.highlight {
