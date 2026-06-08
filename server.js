@@ -68,7 +68,7 @@ app.use(session({
 }));
 
 app.get("/", (req, res) => {
-    if (req.session.username) res.sendFile(__dirname + "/public/chat.html");
+    if (req.session.username) res.sendFile(__dirname + "/public/index.html");
     else res.sendFile(__dirname + "/public/login.html");
 });
 
